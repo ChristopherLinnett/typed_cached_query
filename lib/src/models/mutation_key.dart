@@ -1,0 +1,129 @@
+import 'dart:async';
+
+import 'package:cached_query_flutter/cached_query_flutter.dart';
+import 'package:typed_cached_query/src/errors/query_exception.dart';
+import 'package:typed_cached_query/src/models/query_key.dart';
+import 'package:typed_cached_query/src/models/serializable.dart';
+
+class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnType, ErrorType>, ReturnType, ErrorType> {
+  final RequestType request;
+  MutationKey(this.request);
+
+  String get _valueKey => request.keyGenerator();
+
+  Mutation<ReturnType, RequestType> definition({
+    void Function(RequestType, MutationException, ReturnType?)? onError,
+    void Function(ReturnType, RequestType)? onSuccess,
+    MutationCache? cache,
+    FutureOr<ReturnType> Function(RequestType)? onStartMutation,
+    List<QueryKey<dynamic, dynamic, dynamic>>? invalidateQueries,
+    List<QueryKey<dynamic, dynamic, dynamic>>? refetchQueries,
+    int? retryAttempts,
+    bool Function(ErrorType)? shouldRetry,
+    int? timeoutSeconds,
+    void Function(RequestType)? onTimeout,
+  }) {
+    if ((retryAttempts == null) != (shouldRetry == null)) throw ArgumentError('Either provide both retryAttempts and shouldRetry, or neither.');
+
+    /// Recommended to provide onTimeout to handle timeout errors gracefully.
+    /// If [timeoutSeconds] is provided without [onTimeout], your mutationFn should handle and convert a TimeoutException to [ErrorType]
+    if (onTimeout != null && timeoutSeconds == null) throw ArgumentError('If onTimeout is provided, timeoutSeconds must also be provided.');
+
+    // Explicitly capture the onTimeout parameter to avoid closure capture issues
+    final capturedOnTimeout = onTimeout;
+
+    return Mutation<ReturnType, RequestType>(
+      key: _valueKey,
+      mutationFn: (requestParam) async {
+        int attempts = 0;
+        final maxAttempts = (retryAttempts ?? 0) + 1;
+
+        while (attempts < maxAttempts) {
+          try {
+            final result = timeoutSeconds != null
+                ? await request.mutationFn().timeout(Duration(seconds: timeoutSeconds))
+                : await request.mutationFn();
+
+            return result;
+          } catch (e) {
+            attempts++;
+
+            if (e is TimeoutException && capturedOnTimeout != null) {
+              rethrow;
+            }
+
+            // Handle unhandled exceptions (fail fast)
+            if (e is! ErrorType) {
+              throw MutationException(
+                'An unhandled exception has taken place, please update your definitions for ${request.runtimeType} to include this error, error: ${e.toString()}',
+                500,
+              );
+            }
+            if (shouldRetry == null || attempts >= maxAttempts || !shouldRetry(e as ErrorType)) rethrow;
+
+            await Future<void>.delayed(Duration(milliseconds: 100 * attempts));
+            continue;
+          }
+        }
+
+        throw StateError('Retry loop completed without return or throw');
+      },
+      onError: (requestParam, error, fallback) {
+        if (error is MutationException || error is ArgumentError) {
+          throw error;
+        }
+        if (error is TimeoutException && capturedOnTimeout != null) {
+          capturedOnTimeout(request);
+          return; // Don't return the void result, just handle the timeout
+        }
+
+        final onErrorResults = request.errorMapper(request, error as ErrorType, fallback as ReturnType?);
+        onError?.call(onErrorResults.request, onErrorResults.error, onErrorResults.fallback);
+      },
+      onSuccess: onSuccess,
+      cache: cache ?? request.cache,
+      onStartMutation: onStartMutation,
+      invalidateQueries: invalidateQueries?.map((queryKey) => queryKey.rawKey).toList(),
+      refetchQueries: refetchQueries?.map((queryKey) => queryKey.rawKey).toList(),
+    );
+  }
+
+  MutationCache get _cache => request.cache ?? MutationCache.instance;
+  Mutation<ReturnType, RequestType>? get _getMutation => _cache.getMutation(_valueKey);
+  bool get exists => _getMutation != null;
+  bool get isMutating => _cache.contains(_valueKey);
+
+  Future<MutationState<ReturnType?>> mutate({
+    void Function(RequestType, MutationException, ReturnType?)? onError,
+    void Function(ReturnType, RequestType)? onSuccess,
+    MutationCache? cache,
+    FutureOr<ReturnType> Function(RequestType)? onStartMutation,
+    List<QueryKey<dynamic, dynamic, dynamic>>? invalidateQueries,
+    List<QueryKey<dynamic, dynamic, dynamic>>? refetchQueries,
+    int? retryAttempts,
+    bool Function(ErrorType)? shouldRetry,
+    int? timeoutSeconds,
+    void Function(RequestType)? onTimeout,
+  }) => definition(
+    onError: onError,
+    onSuccess: onSuccess,
+    cache: cache,
+    onStartMutation: onStartMutation,
+    invalidateQueries: invalidateQueries,
+    refetchQueries: refetchQueries,
+    retryAttempts: retryAttempts,
+    shouldRetry: shouldRetry,
+    timeoutSeconds: timeoutSeconds,
+    onTimeout: onTimeout,
+  ).mutate(request);
+
+  bool get isPending => _getMutation != null && _getMutation!.state.isLoading && _getMutation!.state.data == null;
+
+  bool get isRefetching => _getMutation != null && _getMutation!.state.isLoading && _getMutation!.state.data != null;
+
+  bool get isError => _getMutation != null && _getMutation!.state.isError;
+
+  MutationException? get error => _getMutation == null || _getMutation!.state is! MutationError
+      ? null
+      : request.errorMapper(request, (_getMutation!.state as MutationError).error as ErrorType, null).error;
+}
