@@ -106,6 +106,7 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
 
   QueryException? get error {
     if (_getInfiniteQuery == null) return null;
+    if (!_getInfiniteQuery!.state.isError) return null;
     final stateError = _getInfiniteQuery!.state.error;
     if (stateError == null) return null;
     if (stateError is QueryException) return stateError;

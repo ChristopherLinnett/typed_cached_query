@@ -279,6 +279,36 @@ void main() {
     });
   });
 
+  group('MutationKey error getter', () {
+    test('returns null when state is not in error', () async {
+      final request = CreateUserRequest(name: 'OK', email: 'ok@example.com');
+      final user = User(id: 1, name: 'OK', email: 'ok@example.com');
+      when(mockApiService.createUser(request)).thenAnswer((_) async => user);
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      final mutationKey = MutationKey(mutation);
+      await mutationKey.mutate();
+
+      expect(mutationKey.isError, isFalse);
+      expect(mutationKey.error, isNull, reason: 'error must mirror isError — never returns a value when isError is false');
+    });
+
+    test('maps a stored ErrorType via errorMapper', () async {
+      final request = CreateUserRequest(name: 'Bad', email: 'bad@example.com');
+      when(mockApiService.createUser(request)).thenThrow(ValidationError('email', 'taken'));
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      final mutationKey = MutationKey(mutation);
+      try {
+        await mutationKey.mutate();
+      } catch (_) {/* expected */}
+
+      expect(mutationKey.isError, isTrue);
+      expect(mutationKey.error, isA<MutationException>());
+      expect(mutationKey.error!.message, contains('Validation failed on email'));
+    });
+  });
+
   group('MutationKey Backoff', () {
     test('retries succeed when no backoff is provided', () async {
       final request = CreateUserRequest(name: 'Bo', email: 'bo@example.com');
