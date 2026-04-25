@@ -96,7 +96,7 @@ void main() {
       final getUsersRequest = GetAllUsersQueryRequest(apiService: mockApiService, cache: cachedQuery);
 
       // User query should succeed
-      final userResult = await userQuery.queryKey.query().fetch();
+      final userResult = await userQuery.query().fetch();
       expect(userResult.data?.id, users[0].id);
       expect(userResult.data?.name, users[0].name);
       expect(userResult.data?.email, users[0].email);
@@ -104,7 +104,7 @@ void main() {
       // Users query should fail with network error
       QueryException? usersError;
       try {
-        await getUsersRequest.queryKey.query(onError: (error) => usersError = error).fetch();
+        await getUsersRequest.query(onError: (QueryException error) => usersError = error).fetch();
       } catch (e) {
         // Expected
       }
@@ -131,7 +131,7 @@ void main() {
 
       // Execute mutation
       User? successResult;
-      final result = await mutationKey.mutate(onSuccess: (data, req) => successResult = data);
+      final result = await request.mutate(onSuccess: (User data, CreateUserRequest req) => successResult = data);
 
       // Verify result
       expect(result.data, createdUser);
@@ -149,13 +149,11 @@ void main() {
         }),
       );
 
-      final mutationKey = request.mutationKey;
-
       MutationException? capturedError;
       CreateUserRequest? errorRequest;
 
-      await mutationKey.mutate(
-        onError: (req, error, fallback) {
+      await request.mutate(
+        onError: (CreateUserRequest req, MutationException error, User? fallback) {
           capturedError = error;
           errorRequest = req;
         },
@@ -182,9 +180,7 @@ void main() {
         return User(id: 123, name: request.name, email: request.email);
       });
 
-      final mutationKey = retryableRequest.mutationKey;
-
-      final result = await mutationKey.mutate(
+      final result = await retryableRequest.mutate(
         retryAttempts: 2,
         shouldRetry: (_) => true, // Retry all errors
       );
@@ -202,11 +198,9 @@ void main() {
         return User(id: 5, name: 'Slow', email: 'slow@example.com');
       });
 
-      final mutationKey = request.mutationKey;
-
       CreateUserRequest? timeoutRequest;
 
-      final result = await mutationKey.mutate(timeoutSeconds: 1, onTimeout: (req) => timeoutRequest = req);
+      final result = await request.mutate(timeoutSeconds: 1, onTimeout: (CreateUserRequest req) => timeoutRequest = req);
 
       // onTimeout should have been called, result should be null since onTimeout returns void
       expect(timeoutRequest, request);
@@ -228,7 +222,7 @@ void main() {
       when(mockApiService.updateUser(updateRequest)).thenAnswer((_) async => updatedUser);
 
       // Fetch initial data
-      final initialResult = await request.queryKey.query().fetch();
+      final initialResult = await request.query().fetch();
       expect(request.queryKey.exists, true);
       expect(initialResult.data, initialUser);
 
@@ -237,7 +231,7 @@ void main() {
       request.queryKey.updateData((_) => optimisticUser);
 
       // Execute mutation
-      final result = await updateRequest.mutationKey.mutate();
+      final result = await updateRequest.mutate();
 
       // Manually invalidate and refetch the query after mutation
       request.queryKey.invalidate(refetchActive: true);
@@ -261,7 +255,7 @@ void main() {
       // Test query error
       QueryException? queryError;
       try {
-        await query.queryKey.query(onError: (error) => queryError = error).fetch();
+        await query.query(onError: (QueryException error) => queryError = error).fetch();
       } catch (e) {
         // Expected
       }
@@ -271,7 +265,7 @@ void main() {
 
       // Test mutation error
       MutationException? mutationError;
-      await request.mutationKey.mutate(onError: (req, error, fallback) => mutationError = error);
+      await request.mutate(onError: (req, error, fallback) => mutationError = error);
 
       expect(mutationError, isNotNull);
       expect(mutationError!.statusCode, 400);

@@ -3,9 +3,13 @@ import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:typed_cached_query/src/builders/stream_backed_state.dart';
 
 /// A [TypedMutationBuilder] widget that builds its child based on the state of a [Mutation].
-/// This builder only accepts mutations created from [MutationKey.definition()].
+///
+/// The [mutation] is normally produced by calling `request.definition(...)` on a
+/// [MutationSerializable] (e.g. `updateUserMutation.definition(onSuccess: ...)`). The
+/// `*Key.definition(...)` form is still accepted — it's the same call under the hood.
+/// To trigger a one-shot mutation outside a builder, use `request.mutate(...)` instead.
 class TypedMutationBuilder<T, R> extends StatefulWidget {
-  /// The mutation to listen to. Must be created using [MutationKey.definition()].
+  /// The mutation to listen to. Typically built via `request.definition(...)`.
   final Mutation<T, R> mutation;
 
   /// The builder function that creates the widget tree based on mutation state.

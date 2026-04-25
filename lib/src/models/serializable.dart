@@ -39,7 +39,7 @@ import 'package:typed_cached_query/src/models/infinite_query_key.dart';
 /// ## Usage
 /// ```dart
 /// final query = GetUserQuery(123);
-/// final result = await query.queryKey.query().result;
+/// final result = await query.query().fetch();
 /// ```
 ///
 /// ## Advanced Features
@@ -172,7 +172,7 @@ abstract class QuerySerializable<ReturnType, ErrorType> {
 /// ## Usage
 /// ```dart
 /// final mutation = CreateUserMutation(name: 'John', email: 'john@example.com');
-/// final result = await mutation.mutationKey.mutate();
+/// final result = await mutation.mutate();
 /// ```
 ///
 /// ## Type Parameters
@@ -186,7 +186,8 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
   /// can track in-flight state, deduplicate concurrent submissions, and dispatch optimistic updates.
   /// **Returns:** A stable, unique string per mutation type. Override per request only when the
   /// mutation is parameterised by data that should partition cache state (e.g. user id).
-  /// **Example:** `String get keyGenerator => 'create_user';`
+  /// **Example:** `String get keyGenerator => 'create_user_$email';` — include any per-instance
+  /// data that should partition cache state.
   String get keyGenerator;
 
   /// Maps a domain-specific [ErrorType] into a typed [OnErrorResults] for the mutation pipeline.
@@ -272,8 +273,8 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
 /// ## Usage
 /// ```dart
 /// final query = GetUsersInfiniteQuery();
-/// final infiniteQuery = query.infiniteQueryKey.infiniteQuery();
-/// await infiniteQuery.fetchNext(); // Load more pages
+/// final infiniteQuery = query.infiniteQuery();
+/// await infiniteQuery.getNextPage(); // Load more pages
 /// ```
 ///
 /// ## Type Parameters
@@ -367,11 +368,120 @@ abstract class InfiniteQuerySerializable<ReturnType, RequestData, ErrorType> {
 }
 
 extension QuerySerializableExtension<T extends QuerySerializable<ReturnType, ErrorType>, ReturnType, ErrorType> on T {
+  /// Returns a [QueryKey] for state inspection (`exists`, `isPending`, `error`, `invalidate`,
+  /// `updateData`, `fetch`, etc.). Most rendering paths should use [query] instead.
   QueryKey<T, ReturnType, ErrorType> get queryKey => QueryKey(this);
+
+  /// Convenience entry point: build a configured `Query` directly from the serializable.
+  ///
+  /// **Purpose:** Replaces the previous `request.queryKey.query(...)` chain — `*Key` is a
+  /// wrapper-internal abstraction, not part of the rendering path. Per-builder configuration
+  /// (`onSuccess`, `onError`, `config`, `cache`) is preserved so different builders can resolve
+  /// the same serializable with different behaviour.
+  /// **Example:**
+  /// ```dart
+  /// TypedQueryBuilder<User>(
+  ///   query: getUserQuery.query(onSuccess: (u) => analytics.userLoaded(u)),
+  ///   builder: (context, state) => ...,
+  /// )
+  /// ```
+  /// **Returns:** A configured [Query] backed by the same `*Key` implementation.
+  /// **See also:** [QueryKey.query] for the underlying parameter contract.
+  Query<ReturnType> query({
+    void Function(QueryException)? onError,
+    void Function(ReturnType)? onSuccess,
+    QueryConfig<ReturnType>? config,
+    CachedQuery? cache,
+  }) => queryKey.query(onError: onError, onSuccess: onSuccess, config: config, cache: cache);
 }
 
 extension MutationSerializableExtension<T extends MutationSerializable<T, ReturnType, ErrorType>, ReturnType, ErrorType> on T {
+  /// Returns a [MutationKey] for state inspection (`exists`, `isPending`, `error`, etc.).
+  /// Most rendering paths should use [definition] to build a `Mutation` for builders, or [mutate]
+  /// to trigger a single mutation directly.
   MutationKey<T, ReturnType, ErrorType> get mutationKey => MutationKey(this);
+
+  /// Convenience entry point: build a configured `Mutation` directly from the serializable for
+  /// use with `TypedMutationBuilder` / `TypedMutationListener`.
+  ///
+  /// **Purpose:** Replaces the previous `request.mutationKey.definition(...)` chain — `*Key` is a
+  /// wrapper-internal abstraction, not part of the rendering path. Per-builder configuration
+  /// (`onSuccess`, `onError`, `cache`, retry/timeout, optimistic updates) is preserved.
+  /// **Example:**
+  /// ```dart
+  /// TypedMutationBuilder<User, UpdateUserRequest>(
+  ///   mutation: updateUserMutation.definition(onSuccess: (user, _) => toast(user)),
+  ///   builder: (context, state, mutate) => ...,
+  /// )
+  /// ```
+  /// **Returns:** A configured [Mutation] backed by the same `*Key` implementation.
+  /// **See also:** [MutationKey.definition] for the underlying parameter contract.
+  Mutation<ReturnType, T> definition({
+    void Function(T, MutationException, ReturnType?)? onError,
+    void Function(ReturnType, T)? onSuccess,
+    MutationCache? cache,
+    FutureOr<ReturnType> Function(T)? onStartMutation,
+    List<QueryKey<dynamic, dynamic, dynamic>>? invalidateQueries,
+    List<QueryKey<dynamic, dynamic, dynamic>>? refetchQueries,
+    int? retryAttempts,
+    bool Function(ErrorType)? shouldRetry,
+    int? timeoutSeconds,
+    void Function(T)? onTimeout,
+    Duration Function(int attempt)? backoff,
+  }) => mutationKey.definition(
+        onError: onError,
+        onSuccess: onSuccess,
+        cache: cache,
+        onStartMutation: onStartMutation,
+        invalidateQueries: invalidateQueries,
+        refetchQueries: refetchQueries,
+        retryAttempts: retryAttempts,
+        shouldRetry: shouldRetry,
+        timeoutSeconds: timeoutSeconds,
+        onTimeout: onTimeout,
+        backoff: backoff,
+      );
+
+  /// Convenience entry point: trigger this mutation directly from the serializable.
+  ///
+  /// **Purpose:** Replaces the previous `mutation.mutationKey.mutate(...)` chain with a single
+  /// verb on the serializable. The full named-parameter surface of [MutationKey] is preserved.
+  /// **Example:**
+  /// ```dart
+  /// final result = await createUserMutation.mutate(
+  ///   onSuccess: (user, _) => print(user),
+  /// );
+  /// ```
+  /// **Returns:** A [Future] resolving to the final [MutationState], identical to the
+  /// `mutationKey.definition(...).mutate(request)` path used internally.
+  /// **See also:** [MutationKey.definition] for the underlying parameter contract.
+  Future<MutationState<ReturnType?>> mutate({
+    void Function(T, MutationException, ReturnType?)? onError,
+    void Function(ReturnType, T)? onSuccess,
+    MutationCache? cache,
+    FutureOr<ReturnType> Function(T)? onStartMutation,
+    List<QueryKey<dynamic, dynamic, dynamic>>? invalidateQueries,
+    List<QueryKey<dynamic, dynamic, dynamic>>? refetchQueries,
+    int? retryAttempts,
+    bool Function(ErrorType)? shouldRetry,
+    int? timeoutSeconds,
+    void Function(T)? onTimeout,
+    Duration Function(int attempt)? backoff,
+  }) => mutationKey
+      .definition(
+        onError: onError,
+        onSuccess: onSuccess,
+        cache: cache,
+        onStartMutation: onStartMutation,
+        invalidateQueries: invalidateQueries,
+        refetchQueries: refetchQueries,
+        retryAttempts: retryAttempts,
+        shouldRetry: shouldRetry,
+        timeoutSeconds: timeoutSeconds,
+        onTimeout: onTimeout,
+        backoff: backoff,
+      )
+      .mutate(this);
 }
 
 extension InfiniteQuerySerializableExtension<
@@ -381,7 +491,40 @@ extension InfiniteQuerySerializableExtension<
   ErrorType
 >
     on T {
+  /// Returns an [InfiniteQueryKey] for state inspection (`exists`, `isPending`, `hasReachedMax`,
+  /// `allPages`, `pageArgs`, `fetch`, `fetchNextPage`, `refetch`, `invalidate`, `updateData`,
+  /// `error`). Most rendering paths should use [infiniteQuery] instead.
   InfiniteQueryKey<T, ReturnType, RequestData, ErrorType> get infiniteQueryKey => InfiniteQueryKey(this);
+
+  /// Convenience entry point: build a configured `InfiniteQuery` directly from the serializable.
+  ///
+  /// **Purpose:** Replaces the previous `request.infiniteQueryKey.query(...)` chain — `*Key` is a
+  /// wrapper-internal abstraction, not part of the rendering path. Per-builder configuration
+  /// (`onSuccess`, `onError`, `config`, `cache`, `prefetchPages`, `initialData`) is preserved.
+  /// **Example:**
+  /// ```dart
+  /// TypedInfiniteQueryBuilder<Page, Args>(
+  ///   query: feed.infiniteQuery(prefetchPages: 2),
+  ///   builder: (context, state) => ...,
+  /// )
+  /// ```
+  /// **Returns:** A configured [InfiniteQuery] backed by the same `*Key` implementation.
+  /// **See also:** [InfiniteQueryKey.query] for the underlying parameter contract.
+  InfiniteQuery<ReturnType, RequestData> infiniteQuery({
+    void Function(QueryException)? onError,
+    void Function(InfiniteQueryData<ReturnType, RequestData>)? onSuccess,
+    QueryConfig<InfiniteQueryData<ReturnType, RequestData>>? config,
+    CachedQuery? cache,
+    int? prefetchPages,
+    InfiniteQueryData<ReturnType, RequestData>? initialData,
+  }) => infiniteQueryKey.query(
+        onError: onError,
+        onSuccess: onSuccess,
+        config: config,
+        cache: cache,
+        prefetchPages: prefetchPages,
+        initialData: initialData,
+      );
 }
 
 class OnErrorResults<RequestType, ReturnType> {

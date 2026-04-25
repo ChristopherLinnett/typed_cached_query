@@ -7,7 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `QuerySerializableExtension.query({...})` — convenience method on the serializable, replaces the `request.queryKey.query(...)` chain. Same parameter surface as `QueryKey.query()`.
+- `InfiniteQuerySerializableExtension.infiniteQuery({...})` — convenience method on the serializable, replaces the `request.infiniteQueryKey.query(...)` chain. Same parameter surface as `InfiniteQueryKey.query()`.
+- `MutationSerializableExtension.definition({...})` — convenience method on the serializable, replaces the `request.mutationKey.definition(...)` chain when constructing a long-lived `Mutation` for `TypedMutationBuilder` / `TypedMutationListener`.
+- `MutationSerializableExtension.mutate({...})` — direct mutate verb on the serializable. Replaces the previous `request.mutationKey.mutate(...)` chain.
+
 ### Changed (breaking)
+- `MutationKey.mutate(...)` is removed. Migrate to `request.mutate(...)`:
+  ```dart
+  // before
+  await mutation.mutationKey.mutate(onSuccess: (...) => ...);
+  // after
+  await mutation.mutate(onSuccess: (...) => ...);
+  ```
+- `request.queryKey.query(...)` / `request.infiniteQueryKey.query(...)` / `request.mutationKey.definition(...)` chains in builder construction sites should migrate to the new convenience methods. The `*Key.query(...)` / `*Key.definition(...)` methods themselves remain available for advanced cases, but the `*Key` getters are intended for state-inspection (`exists`, `isPending`, `error`, `invalidate`, `updateData`) — not the rendering path.
+  ```dart
+  // before
+  TypedQueryBuilder(query: getUserQuery.queryKey.query(), builder: ...)
+  TypedInfiniteQueryBuilder(query: feed.infiniteQueryKey.query(), builder: ...)
+  TypedMutationBuilder(mutation: updateUser.mutationKey.definition(...), builder: ...)
+  // after
+  TypedQueryBuilder(query: getUserQuery.query(), builder: ...)
+  TypedInfiniteQueryBuilder(query: feed.infiniteQuery(), builder: ...)
+  TypedMutationBuilder(mutation: updateUser.definition(...), builder: ...)
+  ```
 - `MutationSerializable.mutationFn()` and `InfiniteQuerySerializable.queryFn(arg)` now return `Future<dynamic>` (matching `QuerySerializable.queryFn()`) and their result is passed through `responseHandler` before reaching the caller. Existing implementations whose return type was `Future<ReturnType>` continue to compile (Future<X> assigns to Future<dynamic>) and continue to work as long as their `responseHandler` accepts a `ReturnType` value (which all in-tree fixtures do).
 
 ### Fixed

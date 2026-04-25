@@ -3,9 +3,12 @@ import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:typed_cached_query/src/builders/stream_backed_state.dart';
 
 /// A [TypedQueryBuilder] widget that builds its child based on the state of a [Query].
-/// This builder only accepts queries created from [QueryKey.query()].
+///
+/// The [query] is normally produced by calling `request.query(...)` on a
+/// [QuerySerializable] (e.g. `getUserQuery.query(onSuccess: ..., config: ...)`). The
+/// `*Key.query(...)` form is still accepted — it's the same call under the hood.
 class TypedQueryBuilder<T> extends StatefulWidget {
-  /// The query to listen to. Must be created using [QueryKey.query()].
+  /// The query to listen to. Typically built via `request.query(...)`.
   final Query<T> query;
 
   /// The builder function that creates the widget tree based on query state.

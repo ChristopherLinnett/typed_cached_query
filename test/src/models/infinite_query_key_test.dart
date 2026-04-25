@@ -606,6 +606,39 @@ void main() {
     });
   });
 
+  group('InfiniteQuerySerializable.infiniteQuery convenience method', () {
+    test('serializable.infiniteQuery() resolves to the same InfiniteQuery as infiniteQueryKey.query()', () async {
+      final pageResponse = PagedResponse(
+        users: [User(id: 1, name: 'Convenience', email: 'c@example.com')],
+        page: 1,
+        totalPages: 1,
+        hasNext: false,
+      );
+      when(mockApiService.getUsersPage(PageArgs(page: 1, limit: 10))).thenAnswer((_) async => pageResponse);
+
+      final request = GetUsersInfiniteQuery(apiService: mockApiService, localCache: cachedQuery);
+      // No `.infiniteQueryKey` chain — this is the new public entry point.
+      final result = await request.infiniteQuery().fetch();
+
+      expect(result.data?.pages.first.users.first.name, 'Convenience');
+    });
+
+    test('serializable.infiniteQuery(...) forwards onError', () async {
+      when(mockApiService.getUsersPage(any)).thenThrow(ApiError('Internal', 500));
+
+      final request = GetUsersInfiniteQuery(apiService: mockApiService, localCache: cachedQuery);
+      QueryException? captured;
+      final query = request.infiniteQuery(onError: (error) => captured = error);
+
+      try {
+        await query.fetch();
+      } catch (_) {/* expected */}
+
+      expect(captured, isNotNull);
+      expect(captured!.statusCode, 500);
+    });
+  });
+
   group('InfiniteQueryKey responseHandler wiring', () {
     test('queryFn raw page is passed through responseHandler before reaching state', () async {
       // Fixture's queryFn returns a Map; responseHandler builds a PagedResponse with a sentinel

@@ -96,32 +96,6 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
   bool get exists => _getMutation != null;
   bool get isMutating => _cache.contains(_valueKey);
 
-  Future<MutationState<ReturnType?>> mutate({
-    void Function(RequestType, MutationException, ReturnType?)? onError,
-    void Function(ReturnType, RequestType)? onSuccess,
-    MutationCache? cache,
-    FutureOr<ReturnType> Function(RequestType)? onStartMutation,
-    List<QueryKey<dynamic, dynamic, dynamic>>? invalidateQueries,
-    List<QueryKey<dynamic, dynamic, dynamic>>? refetchQueries,
-    int? retryAttempts,
-    bool Function(ErrorType)? shouldRetry,
-    int? timeoutSeconds,
-    void Function(RequestType)? onTimeout,
-    Duration Function(int attempt)? backoff,
-  }) => definition(
-    onError: onError,
-    onSuccess: onSuccess,
-    cache: cache,
-    onStartMutation: onStartMutation,
-    invalidateQueries: invalidateQueries,
-    refetchQueries: refetchQueries,
-    retryAttempts: retryAttempts,
-    shouldRetry: shouldRetry,
-    timeoutSeconds: timeoutSeconds,
-    onTimeout: onTimeout,
-    backoff: backoff,
-  ).mutate(request);
-
   bool get isPending => _getMutation != null && _getMutation!.state.isLoading && _getMutation!.state.data == null;
 
   bool get isRefetching => _getMutation != null && _getMutation!.state.isLoading && _getMutation!.state.data != null;
