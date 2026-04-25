@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:cached_query_flutter/cached_query_flutter.dart';
+import 'package:typed_cached_query/src/builders/stream_backed_state.dart';
 
 /// A [TypedMutationBuilder] widget that builds its child based on the state of a [Mutation].
 /// This builder only accepts mutations created from [MutationKey.definition()].
@@ -18,34 +18,19 @@ class TypedMutationBuilder<T, R> extends StatefulWidget {
   State<TypedMutationBuilder<T, R>> createState() => _TypedMutationBuilderState<T, R>();
 }
 
-class _TypedMutationBuilderState<T, R> extends State<TypedMutationBuilder<T, R>> {
-  late MutationState<T> _currentState;
-  late StreamSubscription<MutationState<T>> _subscription;
+class _TypedMutationBuilderState<T, R> extends State<TypedMutationBuilder<T, R>>
+    with StreamBackedState<MutationState<T>, TypedMutationBuilder<T, R>> {
+  @override
+  Stream<MutationState<T>> streamFor(TypedMutationBuilder<T, R> widget) => widget.mutation.stream;
 
   @override
-  void initState() {
-    super.initState();
-    _currentState = widget.mutation.state;
-    _subscription = widget.mutation.stream.listen((state) => mounted ? setState(() => _currentState = state) : null);
+  MutationState<T> initialStateFor(TypedMutationBuilder<T, R> widget) => widget.mutation.state;
+
+  @override
+  void onState(MutationState<T> previous, MutationState<T> current) {
+    setState(() {});
   }
 
   @override
-  void didUpdateWidget(TypedMutationBuilder<T, R> oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.mutation == oldWidget.mutation) return;
-    _subscription.cancel();
-    _currentState = widget.mutation.state;
-    _subscription = widget.mutation.stream.listen((state) => mounted ? setState(() => _currentState = state) : null);
-  }
-
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return widget.builder(context, _currentState, widget.mutation.mutate);
-  }
+  Widget build(BuildContext context) => widget.builder(context, currentState, widget.mutation.mutate);
 }

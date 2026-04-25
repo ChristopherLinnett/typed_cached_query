@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:cached_query_flutter/cached_query_flutter.dart';
+import 'package:typed_cached_query/src/builders/stream_backed_state.dart';
 
 /// A [TypedMutationListener] widget that listens to mutation state changes and calls callbacks.
 /// This listener only accepts mutations created from [MutationKey.definition()].
@@ -24,55 +24,33 @@ class TypedMutationListener<T, R> extends StatefulWidget {
   final void Function(BuildContext context, MutationState<T> state)? onLoading;
 
   /// Creates a [TypedMutationListener].
-  const TypedMutationListener({super.key, required this.mutation, required this.child, this.onData, this.onError, this.onSuccess, this.onLoading});
+  const TypedMutationListener({
+    super.key,
+    required this.mutation,
+    required this.child,
+    this.onData,
+    this.onError,
+    this.onSuccess,
+    this.onLoading,
+  });
 
   @override
   State<TypedMutationListener<T, R>> createState() => _TypedMutationListenerState<T, R>();
 }
 
-class _TypedMutationListenerState<T, R> extends State<TypedMutationListener<T, R>> {
-  late MutationState<T> _previousState;
-  late StreamSubscription<MutationState<T>> _subscription;
+class _TypedMutationListenerState<T, R> extends State<TypedMutationListener<T, R>>
+    with StreamBackedState<MutationState<T>, TypedMutationListener<T, R>> {
+  @override
+  Stream<MutationState<T>> streamFor(TypedMutationListener<T, R> widget) => widget.mutation.stream;
 
   @override
-  void initState() {
-    super.initState();
-    _previousState = widget.mutation.state;
-    _subscription = widget.mutation.stream.listen((state) {
-      if (mounted) {
-        _handleStateChange(_previousState, state);
-        _previousState = state;
-      }
-    });
-  }
+  MutationState<T> initialStateFor(TypedMutationListener<T, R> widget) => widget.mutation.state;
 
   @override
-  void didUpdateWidget(TypedMutationListener<T, R> oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.mutation != oldWidget.mutation) {
-      _subscription.cancel();
-      _previousState = widget.mutation.state;
-      _subscription = widget.mutation.stream.listen((state) {
-        if (mounted) {
-          _handleStateChange(_previousState, state);
-          _previousState = state;
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
-  }
-
-  void _handleStateChange(MutationState<T> previous, MutationState<T> current) {
+  void onState(MutationState<T> previous, MutationState<T> current) {
     widget.onData?.call(context, current);
 
     // Transition-only semantics: only fire on the leading edge of a state change.
-    // Without these guards, every stream emission while state remains in a bucket would re-fire
-    // the corresponding callback (e.g. a BehaviorSubject replay on subscribe).
     if (!previous.isError && current.isError && widget.onError != null) {
       widget.onError!(context, current);
     } else if (!previous.isSuccess && current.isSuccess && widget.onSuccess != null) {
@@ -83,7 +61,5 @@ class _TypedMutationListenerState<T, R> extends State<TypedMutationListener<T, R
   }
 
   @override
-  Widget build(BuildContext context) {
-    return widget.child;
-  }
+  Widget build(BuildContext context) => widget.child;
 }

@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:cached_query_flutter/cached_query_flutter.dart';
+import 'package:typed_cached_query/src/builders/stream_backed_state.dart';
 
 /// A [TypedInfiniteQueryBuilder] widget that builds its child based on the state of an [InfiniteQuery].
 /// This builder only accepts infinite queries created from [InfiniteQueryKey.query()].
@@ -24,34 +24,21 @@ class TypedInfiniteQueryBuilder<T, A> extends StatefulWidget {
   State<TypedInfiniteQueryBuilder<T, A>> createState() => _TypedInfiniteQueryBuilderState<T, A>();
 }
 
-class _TypedInfiniteQueryBuilderState<T, A> extends State<TypedInfiniteQueryBuilder<T, A>> {
-  late InfiniteQueryStatus<T, A> _currentState;
-  late StreamSubscription<InfiniteQueryStatus<T, A>> _subscription;
+class _TypedInfiniteQueryBuilderState<T, A> extends State<TypedInfiniteQueryBuilder<T, A>>
+    with StreamBackedState<InfiniteQueryStatus<T, A>, TypedInfiniteQueryBuilder<T, A>> {
+  @override
+  Stream<InfiniteQueryStatus<T, A>> streamFor(TypedInfiniteQueryBuilder<T, A> widget) => widget.query.stream;
 
   @override
-  void initState() {
-    super.initState();
-    _currentState = widget.query.state;
-    _subscription = widget.query.stream.listen((state) => mounted ? setState(() => _currentState = state) : null);
-  }
+  InfiniteQueryStatus<T, A> initialStateFor(TypedInfiniteQueryBuilder<T, A> widget) => widget.query.state;
 
   @override
-  void didUpdateWidget(TypedInfiniteQueryBuilder<T, A> oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.query == oldWidget.query) return;
-    _subscription.cancel();
-    _currentState = widget.query.state;
-    _subscription = widget.query.stream.listen((state) => mounted ? setState(() => _currentState = state) : null);
-  }
-
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
+  void onState(InfiniteQueryStatus<T, A> previous, InfiniteQueryStatus<T, A> current) {
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    return widget.builder(context, _currentState, widget.query.getNextPage, !widget.query.hasNextPage());
+    return widget.builder(context, currentState, widget.query.getNextPage, !widget.query.hasNextPage());
   }
 }
