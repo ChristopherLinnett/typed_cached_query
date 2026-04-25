@@ -45,18 +45,21 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
         try {
           return request.getNextArg(data);
         } catch (e) {
-          if (e is ErrorType) {
-            onError?.call(request.errorMapper(e as ErrorType));
-          } else {
-            onError?.call(QueryException('An unhandled exception occurred in getNextArg: ${e.toString()}', 500));
-          }
-          return null;
+          if (e is ErrorType) rethrow;
+          throw QueryException('An unhandled exception occurred in getNextArg: ${e.toString()}', 500);
         }
       },
-      onError: (error) => error is QueryException
-          /// if the error is not handled, it will throw as QueryException with generic message and error contents turned as [String].
-          ? throw error
-          : onError?.call(request.errorMapper(error as ErrorType)),
+      onError: (error) {
+        if (error is QueryException) {
+          onError?.call(error);
+          return;
+        }
+        if (error is ErrorType) {
+          onError?.call(request.errorMapper(error));
+          return;
+        }
+        onError?.call(QueryException('An unhandled exception occurred: ${error.toString()}', 500));
+      },
       onSuccess: onSuccess,
       config: QueryConfig(
         storageSerializer: request.storageSerializer,
