@@ -253,7 +253,7 @@ void main() {
   });
 
   group('MutationKey Backoff', () {
-    test('retries succeed when no backoff is provided (default behaviour preserved)', () async {
+    test('retries succeed when no backoff is provided', () async {
       final request = CreateUserRequest(name: 'Bo', email: 'bo@example.com');
       final user = User(id: 1, name: 'Bo', email: 'bo@example.com');
       var calls = 0;
