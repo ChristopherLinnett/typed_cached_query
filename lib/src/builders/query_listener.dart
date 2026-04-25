@@ -57,8 +57,10 @@ class _TypedQueryListenerState<T> extends State<TypedQueryListener<T>>
     if (!previous.isError && current.isError && widget.onError != null) return widget.onError!(context, current);
     if (!previous.isSuccess && current.isSuccess && widget.onSuccess != null) return widget.onSuccess!(context, current);
     // Refetch must be checked before onLoading: a refetch satisfies the !previous.isLoading && current.isLoading
-    // predicate, so without this earlier branch onRefetching would be unreachable.
-    if (previous.data != null && !previous.isLoading && current.isLoading && widget.onRefetching != null) {
+    // predicate, so without this earlier branch onRefetching would be unreachable. A query that previously
+    // succeeded with null data (nullable return type / void-shaped success) is still a refetch — gate on
+    // previous.isSuccess as well as previous.data != null.
+    if ((previous.isSuccess || previous.data != null) && !previous.isLoading && current.isLoading && widget.onRefetching != null) {
       return widget.onRefetching!(context, current);
     }
     if (!previous.isLoading && current.isLoading && widget.onLoading != null) return widget.onLoading!(context, current);
