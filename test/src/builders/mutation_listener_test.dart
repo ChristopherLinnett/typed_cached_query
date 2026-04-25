@@ -70,10 +70,11 @@ void main() {
     expect(successes, 2, reason: 'a second mutate cycle adds exactly one further success transition');
   });
 
-  testWidgets('onSuccess does not fire on a stream replay of the same success state (didUpdateWidget swap to same mutation result)', (tester) async {
+  testWidgets('onSuccess does not fire when a late listener receives a replay of the current success state', (tester) async {
     final mutation = _makeMutation(cache, 'ml-replay', (i) async => 'ok-$i');
     await mutation.mutate(1);
-    // Wait for completion before listener attaches — listener attaches AFTER state is success.
+    // Complete the mutation BEFORE attaching the listener, so the subscription receives a
+    // BehaviorSubject replay of the success state. Pre-fix, this fired onSuccess for a non-transition.
 
     var successes = 0;
     await tester.pumpWidget(

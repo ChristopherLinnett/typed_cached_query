@@ -284,7 +284,7 @@ void main() {
       expect(result.fallback, null);
     });
 
-    test('OnErrorResults exposes final fields (read-only after construction)', () {
+    test('OnErrorResults stores fields by reference without copying', () {
       final request = CreateUserRequest(name: 'A', email: 'a@b.c');
       final mutationSerializable = TestMutationSerializable(request: request);
       final error = MutationException('e', 500);
