@@ -39,7 +39,7 @@ import 'package:typed_cached_query/src/models/infinite_query_key.dart';
 /// ## Usage
 /// ```dart
 /// final query = GetUserQuery(123);
-/// final result = await query.query().result;
+/// final result = await query.query().fetch();
 /// ```
 ///
 /// ## Advanced Features
@@ -186,7 +186,8 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
   /// can track in-flight state, deduplicate concurrent submissions, and dispatch optimistic updates.
   /// **Returns:** A stable, unique string per mutation type. Override per request only when the
   /// mutation is parameterised by data that should partition cache state (e.g. user id).
-  /// **Example:** `String get keyGenerator => 'create_user';`
+  /// **Example:** `String get keyGenerator => 'create_user_$email';` — include any per-instance
+  /// data that should partition cache state.
   String get keyGenerator;
 
   /// Maps a domain-specific [ErrorType] into a typed [OnErrorResults] for the mutation pipeline.
@@ -272,8 +273,8 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
 /// ## Usage
 /// ```dart
 /// final query = GetUsersInfiniteQuery();
-/// final infiniteQuery = query.infiniteQueryKey.infiniteQuery();
-/// await infiniteQuery.fetchNext(); // Load more pages
+/// final infiniteQuery = query.infiniteQuery();
+/// await infiniteQuery.getNextPage(); // Load more pages
 /// ```
 ///
 /// ## Type Parameters
@@ -385,6 +386,7 @@ extension QuerySerializableExtension<T extends QuerySerializable<ReturnType, Err
   /// )
   /// ```
   /// **Returns:** A configured [Query] backed by the same `*Key` implementation.
+  /// **See also:** [QueryKey.query] for the underlying parameter contract.
   Query<ReturnType> query({
     void Function(QueryException)? onError,
     void Function(ReturnType)? onSuccess,
@@ -413,6 +415,7 @@ extension MutationSerializableExtension<T extends MutationSerializable<T, Return
   /// )
   /// ```
   /// **Returns:** A configured [Mutation] backed by the same `*Key` implementation.
+  /// **See also:** [MutationKey.definition] for the underlying parameter contract.
   Mutation<ReturnType, T> definition({
     void Function(T, MutationException, ReturnType?)? onError,
     void Function(ReturnType, T)? onSuccess,
@@ -451,6 +454,7 @@ extension MutationSerializableExtension<T extends MutationSerializable<T, Return
   /// ```
   /// **Returns:** A [Future] resolving to the final [MutationState], identical to the
   /// `mutationKey.definition(...).mutate(request)` path used internally.
+  /// **See also:** [MutationKey.definition] for the underlying parameter contract.
   Future<MutationState<ReturnType?>> mutate({
     void Function(T, MutationException, ReturnType?)? onError,
     void Function(ReturnType, T)? onSuccess,
@@ -505,6 +509,7 @@ extension InfiniteQuerySerializableExtension<
   /// )
   /// ```
   /// **Returns:** A configured [InfiniteQuery] backed by the same `*Key` implementation.
+  /// **See also:** [InfiniteQueryKey.query] for the underlying parameter contract.
   InfiniteQuery<ReturnType, RequestData> infiniteQuery({
     void Function(QueryException)? onError,
     void Function(InfiniteQueryData<ReturnType, RequestData>)? onSuccess,
