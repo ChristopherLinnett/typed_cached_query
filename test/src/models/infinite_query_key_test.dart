@@ -414,6 +414,9 @@ void main() {
       } catch (_) {/* expected to surface */}
 
       expect(query.state.error, isNotNull, reason: 'A throwing getNextArg must surface as an error state, not as silent end-of-pagination');
+      expect(infiniteQueryKey.isError, isTrue, reason: 'The query handle must report isError after a getNextArg failure');
+      expect(query.state, isA<InfiniteQueryError<PagedResponse, PageArgs>>(), reason: 'state must be InfiniteQueryError, not InfiniteQuerySuccess(hasReachedMax: true)');
+      expect(query.state.error, isA<ApiError>(), reason: 'ErrorType throws are stored as the original ErrorType in state.error');
     });
 
     test('getNextArg throw of unknown error surfaces an error state', () async {
@@ -427,6 +430,10 @@ void main() {
       } catch (_) {/* expected */}
 
       expect(query.state.error, isNotNull);
+      expect(query.state.error, isA<QueryException>(), reason: 'unknown-type errors are wrapped in QueryException by the getNextArg wrapper');
+      expect((query.state.error as QueryException).message, contains('getNextArg'));
+      expect(infiniteQueryKey.isError, isTrue);
+      expect(query.state, isA<InfiniteQueryError<PagedResponse, PageArgs>>());
     });
 
     test('error getter does not throw when state.error is a QueryException (unknown-type path)', () async {
