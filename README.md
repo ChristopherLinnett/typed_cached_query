@@ -17,11 +17,6 @@ This package abstracts away the complexity of cached_query_flutter while providi
 - **Testing support**: Easy-to-mock interfaces for unit testing
 - **Flutter integration**: Seamless integration with Flutter lifecycle and connectivity
 
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
 ## Getting Started
 
 ### Installation

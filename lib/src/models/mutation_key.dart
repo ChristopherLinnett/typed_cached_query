@@ -41,38 +41,28 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
     return Mutation<ReturnType, RequestType>(
       key: _valueKey,
       mutationFn: (requestParam) async {
-        int attempts = 0;
         final maxAttempts = (retryAttempts ?? 0) + 1;
-
-        while (attempts < maxAttempts) {
+        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
-            final result = timeoutSeconds != null
+            return timeoutSeconds != null
                 ? await request.mutationFn().timeout(Duration(seconds: timeoutSeconds))
                 : await request.mutationFn();
-
-            return result;
           } catch (e) {
-            attempts++;
-
-            if (e is TimeoutException && capturedOnTimeout != null) {
-              rethrow;
-            }
-
-            // Handle unhandled exceptions (fail fast)
+            if (e is TimeoutException && capturedOnTimeout != null) rethrow;
             if (e is! ErrorType) {
               throw MutationException(
                 'An unhandled exception has taken place, please update your definitions for ${request.runtimeType} to include this error, error: ${e.toString()}',
                 500,
               );
             }
-            if (shouldRetry == null || attempts >= maxAttempts || !shouldRetry(e as ErrorType)) rethrow;
-
-            await Future<void>.delayed(backoffFn(attempts));
-            continue;
+            final canRetry = shouldRetry != null && attempt < maxAttempts && shouldRetry(e as ErrorType);
+            if (!canRetry) rethrow;
+            await Future<void>.delayed(backoffFn(attempt));
           }
         }
-
-        throw StateError('Retry loop completed without return or throw');
+        // Unreachable: the loop body always exits via `return` or `rethrow` on the final attempt.
+        // Dart's flow analysis does not see this, so a terminator is required.
+        throw StateError('unreachable: mutation retry loop completed without returning or throwing');
       },
       onError: (requestParam, error, fallback) {
         if (error is MutationException || error is ArgumentError) {
