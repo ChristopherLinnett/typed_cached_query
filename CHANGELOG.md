@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `QueryKey.query()` now names the actual `ReturnType` in the `FormatException` message instead of the literal "Type".
 
-## [0.0.1]
+## [0.0.1] - 2025-12-16
 
 Initial release of `typed_cached_query`, a type-safe wrapper around `cached_query_flutter`.
 
