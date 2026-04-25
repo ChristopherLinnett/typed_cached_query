@@ -4,6 +4,7 @@ version: 0.0.1
 homepage: https://github.com/ChristopherLinnett/typed_cached_query
 repository: https://github.com/ChristopherLinnett/typed_cached_query
 issue_tracker: https://github.com/ChristopherLinnett/typed_cached_query/issues
+documentation: https://github.com/ChristopherLinnett/typed_cached_query#readme
 
 environment:
   sdk: ^3.10.3
