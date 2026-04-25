@@ -4,7 +4,7 @@
 
 `typed_cached_query` is a **typed shim** over [`cached_query_flutter`](https://pub.dev/packages/cached_query_flutter) — not a self-contained façade.
 
-The library adds compile-time type safety on the **input** side of every query/mutation/infinite query (request payload, error type, return type, page-pointer type) but deliberately **returns the underlying `cached_query_flutter` types** (`Query<T>`, `Mutation<T, R>`, `InfiniteQuery<T, A>`, `QueryStatus<T>`, `MutationState<T>`, `InfiniteQueryStatus<T, A>`) and re-exports their public surface from the package barrel.
+The library adds compile-time type safety on the **input** side of every query/mutation/infinite query (request payload, error type, return type, page-pointer type) but deliberately **returns the underlying `cached_query_flutter` types** (`Query<ReturnType>`, `Mutation<ReturnType, RequestType>`, `InfiniteQuery<ReturnType, RequestData>`, `QueryStatus<ReturnType>`, `MutationState<ReturnType>`, `InfiniteQueryStatus<ReturnType, RequestData>`) and re-exports those types — together with the configuration, observer, storage, and state-variant types they depend on — from the package barrel ([lib/typed_cached_query.dart](../lib/typed_cached_query.dart)).
 
 Consumers therefore still need to learn the relevant parts of `cached_query_flutter` (state shapes, configuration knobs, lifecycle hooks). The wrapper is **not a substitute** for understanding the upstream package.
 

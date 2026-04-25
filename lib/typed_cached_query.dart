@@ -41,5 +41,6 @@ export 'package:cached_query_flutter/cached_query_flutter.dart'
         GetNextArg,
         // Cache instances (but users should prefer our wrapper methods)
         Query,
+        Mutation,
         CachedQuery,
         MutationCache;
