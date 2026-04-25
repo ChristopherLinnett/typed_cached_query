@@ -390,7 +390,7 @@ class _BadResponseQuery extends QuerySerializable<User, ApiError> {
   QueryException errorMapper(ApiError error) => QueryException(error.message, error.code);
 
   @override
-  Future<dynamic> queryFn() async => apiService.getUser(1);
+  Future<dynamic> queryFn() => apiService.getUser(1);
 
   @override
   User responseHandler(dynamic response) => throw Exception('responseHandler intentionally failed');
