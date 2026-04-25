@@ -42,12 +42,13 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
       key: _valueKey,
       mutationFn: (requestParam) async {
         final maxAttempts = (retryAttempts ?? 0) + 1;
+        dynamic raw;
         for (var attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
-            final raw = timeoutSeconds != null
+            raw = timeoutSeconds != null
                 ? await request.mutationFn().timeout(Duration(seconds: timeoutSeconds))
                 : await request.mutationFn();
-            return request.responseHandler(raw);
+            break;
           } catch (e) {
             if (e is TimeoutException && capturedOnTimeout != null) rethrow;
             if (e is! ErrorType) {
@@ -61,9 +62,14 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
             await Future<void>.delayed(backoffFn(attempt));
           }
         }
-        // Unreachable: the loop body always exits via `return` or `rethrow` on the final attempt.
-        // Dart's flow analysis does not see this, so a terminator is required.
-        throw StateError('unreachable: mutation retry loop completed without returning or throwing');
+        // responseHandler runs OUTSIDE the retry try/catch so a parsing failure surfaces as a
+        // 400 MutationException (same shape as QueryKey/InfiniteQueryKey) and is never retried —
+        // a malformed response is not a transient ErrorType.
+        try {
+          return request.responseHandler(raw);
+        } catch (e) {
+          throw MutationException('parsing the response of type ${raw.runtimeType} to $ReturnType failed: ${e.toString()}', 400);
+        }
       },
       onError: (requestParam, error, fallback) {
         if (error is MutationException || error is ArgumentError) {
