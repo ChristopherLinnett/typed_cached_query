@@ -75,6 +75,36 @@ void main() {
     expect(errors, greaterThanOrEqualTo(1));
   });
 
+  testWidgets('onRefetching fires when refetching a query that already has data', (tester) async {
+    final query = _makeQuery(cache, 'ql-refetch', () async => 'value');
+
+    var loadings = 0;
+    var refetchings = 0;
+
+    await tester.pumpWidget(
+      _harness(
+        TypedQueryListener<String>(
+          query: query,
+          onLoading: (_, _) => loadings += 1,
+          onRefetching: (_, _) => refetchings += 1,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    // Cold start: stream auto-fetches via onListen.
+    await tester.pumpAndSettle();
+    expect(loadings, greaterThanOrEqualTo(1), reason: 'cold-start fetch must fire onLoading');
+    expect(refetchings, 0, reason: 'onRefetching must not fire on the cold start when there is no prior data');
+
+    // Refetch: data is populated, so the listener should classify the next loading transition as refetching.
+    final loadingsBeforeRefetch = loadings;
+    await query.refetch();
+    await tester.pumpAndSettle();
+
+    expect(refetchings, greaterThanOrEqualTo(1), reason: 'a refetch with data present must fire onRefetching');
+    expect(loadings, loadingsBeforeRefetch, reason: 'onLoading must not fire on a refetch when data is already present');
+  });
+
   testWidgets('didUpdateWidget swaps subscription', (tester) async {
     final qa = _makeQuery(cache, 'ql-A', () async => 'a');
     final qb = _makeQuery(cache, 'ql-B', () async => 'b');
