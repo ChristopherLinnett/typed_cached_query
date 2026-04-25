@@ -1,7 +1,9 @@
 name: typed_cached_query
 description: "A type-safe wrapper around cached_query_flutter that provides a clean, strongly-typed API for managing queries and mutations in Flutter applications."
 version: 0.0.1
-homepage:
+homepage: https://github.com/ChristopherLinnett/typed_cached_query
+repository: https://github.com/ChristopherLinnett/typed_cached_query
+issue_tracker: https://github.com/ChristopherLinnett/typed_cached_query/issues
 
 environment:
   sdk: ^3.10.3
