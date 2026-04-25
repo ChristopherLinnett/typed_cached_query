@@ -271,8 +271,15 @@ abstract class InfiniteQuerySerializable<ReturnType, RequestData, ErrorType> {
   /// Takes [RequestData] (typically page number, offset, or cursor) to determine what data to fetch
   Future<ReturnType> queryFn(RequestData requestData);
 
-  /// Determines the argument for the next page based on the current infinite query data
-  /// Return null when there are no more pages to load, or the next [RequestData] argument to fetch the next page
+  /// Determines the argument for the next page based on the current infinite query data.
+  ///
+  /// **Return** the next [RequestData] argument to fetch a further page, or `null` when there
+  /// are no more pages to load.
+  ///
+  /// **Error contract:** if this method throws, the failure is propagated to the underlying
+  /// `InfiniteQuery` and surfaces as an error state (rather than silently terminating pagination).
+  /// Errors of type [ErrorType] flow through [errorMapper]; any other thrown object is wrapped in
+  /// a generic [QueryException] before being delivered to the user-supplied `onError` callback.
   RequestData? getNextArg(InfiniteQueryData<ReturnType, RequestData>? data);
 
   /// Used for persisting the infinite query data to storage, should convert [InfiniteQueryData] to a [Map<String, dynamic>]

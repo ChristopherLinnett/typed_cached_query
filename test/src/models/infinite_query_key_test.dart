@@ -135,6 +135,31 @@ class GetUsersInfiniteQuery extends InfiniteQuerySerializable<PagedResponse, Pag
   bool get storeQuery => true;
 }
 
+// Helper that throws inside getNextArg only after the first page has been fetched —
+// exercises the fetch-time error-propagation path (initial construction succeeds).
+class _ThrowingGetNextArgQuery extends InfiniteQuerySerializable<PagedResponse, PageArgs, ApiError> {
+  final CachedQuery localCache;
+  final Object errorToThrow;
+  _ThrowingGetNextArgQuery({required this.localCache, required this.errorToThrow});
+
+  @override
+  String keyGenerator() => 'throwing_get_next_arg';
+  @override
+  QueryException errorMapper(ApiError error) => QueryException('API Error: ${error.message}', error.code);
+  @override
+  PagedResponse responseHandler(dynamic response) => response as PagedResponse;
+  @override
+  CachedQuery get cache => localCache;
+  @override
+  Future<PagedResponse> queryFn(PageArgs arg) async =>
+      PagedResponse(users: [User(id: arg.page, name: 'u${arg.page}', email: 'u@b.c')], page: arg.page, totalPages: 5, hasNext: true);
+  @override
+  PageArgs? getNextArg(InfiniteQueryData<PagedResponse, PageArgs>? data) {
+    if (data == null || data.pages.isEmpty) return PageArgs(page: 1, limit: 10);
+    throw errorToThrow;
+  }
+}
+
 void main() {
   late MockMockApiService mockApiService;
   late CachedQuery cachedQuery;
@@ -372,6 +397,36 @@ void main() {
       });
 
       expect(calls, 1, reason: 'updateFunction must be invoked exactly once per updateData call');
+    });
+
+    test('getNextArg throw of ErrorType propagates to error state (not "no more pages")', () async {
+      final request = _ThrowingGetNextArgQuery(localCache: cachedQuery, errorToThrow: ApiError('boom', 503));
+      final infiniteQueryKey = InfiniteQueryKey(request);
+      final query = infiniteQueryKey.query();
+
+      // First page succeeds.
+      await query.fetch();
+      expect(infiniteQueryKey.isError, isFalse);
+
+      // Subsequent getNextArg throws — must surface as error, not silent end-of-pagination.
+      try {
+        await query.getNextPage();
+      } catch (_) {/* expected to surface */}
+
+      expect(query.state.error, isNotNull, reason: 'A throwing getNextArg must surface as an error state, not as silent end-of-pagination');
+    });
+
+    test('getNextArg throw of unknown error surfaces an error state', () async {
+      final request = _ThrowingGetNextArgQuery(localCache: cachedQuery, errorToThrow: StateError('unexpected'));
+      final infiniteQueryKey = InfiniteQueryKey(request);
+      final query = infiniteQueryKey.query();
+
+      await query.fetch();
+      try {
+        await query.getNextPage();
+      } catch (_) {/* expected */}
+
+      expect(query.state.error, isNotNull);
     });
 
     test('should invalidate query correctly', () async {
