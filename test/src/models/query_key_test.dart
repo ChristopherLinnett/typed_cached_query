@@ -207,6 +207,27 @@ void main() {
       );
     });
 
+    test('FormatException message names the actual ReturnType (not the literal "Type")', () async {
+      final user = User(id: 1, name: 'A', email: 'a@b.c');
+      when(mockApiService.getUser(1)).thenAnswer((_) async => user);
+
+      final request = _BadResponseQuery(apiService: mockApiService, localCache: cachedQuery);
+      final query = request.queryKey.query();
+
+      Object? captured;
+      try {
+        await query.fetch();
+      } catch (e) {
+        captured = e;
+      }
+      final stateError = query.state.error ?? captured;
+
+      expect(stateError, isNotNull, reason: 'expected an error to be recorded for the failed responseHandler');
+      final message = stateError.toString();
+      expect(message, contains('to User failed'), reason: 'expected the actual ReturnType name in the FormatException message, got: $message');
+      expect(message, isNot(contains('to Type failed')), reason: 'message must not contain the literal "Type"');
+    });
+
     test('should call onSuccess callback on successful fetch', () async {
       final user = User(id: 123, name: 'John Doe', email: 'john@example.com');
       when(mockApiService.getUser(123)).thenAnswer((_) async => user);
@@ -320,6 +341,29 @@ void main() {
       expect(result, null);
     });
   });
+}
+
+// Helper that always fails inside responseHandler to exercise the FormatException path
+class _BadResponseQuery extends QuerySerializable<User, ApiError> {
+  final MockApiService apiService;
+  final CachedQuery localCache;
+
+  _BadResponseQuery({required this.apiService, required this.localCache});
+
+  @override
+  Map<String, dynamic> toJson() => {'id': 1};
+
+  @override
+  CachedQuery get cache => localCache;
+
+  @override
+  QueryException errorMapper(ApiError error) => QueryException(error.message, error.code);
+
+  @override
+  Future<dynamic> queryFn() async => apiService.getUser(1);
+
+  @override
+  User responseHandler(dynamic response) => throw Exception('responseHandler intentionally failed');
 }
 
 // Helper class for testing error scenarios

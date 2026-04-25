@@ -29,7 +29,7 @@ class QueryKey<RequestType extends QuerySerializable<ReturnType, ErrorType>, Ret
             try {
               return request.responseHandler(response);
             } catch (e) {
-              throw FormatException('parsing the response of type ${response.runtimeType} to ${ReturnType.runtimeType} failed: ${e.toString()}');
+              throw FormatException('parsing the response of type ${response.runtimeType} to $ReturnType failed: ${e.toString()}');
             }
           });
         } catch (e) {
