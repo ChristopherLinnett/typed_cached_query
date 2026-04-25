@@ -217,11 +217,11 @@ dart pub get
 # (Re)generate mockito mocks if you change @GenerateMocks declarations
 dart run build_runner build --delete-conflicting-outputs
 
-# Run static analysis on lib/
-dart analyze --fatal-infos lib/
+# Run static analysis (errors and warnings fail; infos are advisory)
+dart analyze
 
 # Run the full test suite
 flutter test
 ```
 
-CI runs the same `dart pub get` → `dart analyze --fatal-infos lib/` → `flutter test` pipeline on every push and pull request.
+CI runs the same `dart pub get` → `dart analyze` → `flutter test` pipeline on every push and pull request.

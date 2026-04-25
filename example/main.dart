@@ -1,3 +1,7 @@
+// This is example code that demonstrates listener callbacks via `print`. Suppress the
+// `avoid_print` lint here so the example reads clearly without requiring a logger.
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:typed_cached_query/typed_cached_query.dart';
 

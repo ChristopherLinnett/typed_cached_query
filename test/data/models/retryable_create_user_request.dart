@@ -1,4 +1,3 @@
-import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:typed_cached_query/typed_cached_query.dart';
 import 'user.dart';
 import 'network_error.dart';
@@ -31,6 +30,5 @@ class RetryableCreateUserRequest extends MutationSerializable<RetryableCreateUse
   @override
   Future<User> mutationFn() => apiService.createUser(CreateUserRequest(name: name, email: email, apiService: apiService));
 
-  @override
   Map<String, dynamic> toJson() => {'name': name, 'email': email};
 }
