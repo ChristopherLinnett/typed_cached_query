@@ -141,10 +141,9 @@ class UserProfileWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final getUserQuery = GetUserRequest(userId: 1, apiService: ApiService());
-    final queryKey = getUserQuery.queryKey;
 
     return FutureBuilder(
-      future: queryKey.query().fetch(),
+      future: getUserQuery.query().fetch(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
           return Text('User: ${snapshot.data!.data!.name}');
@@ -166,13 +165,16 @@ void updateUser() async {
     apiService: ApiService(),
   );
 
-  final mutationKey = mutation.mutationKey;
-  final result = await mutationKey.mutate(
+  final result = await mutation.mutate(
     onSuccess: (user, request) => print('User updated: ${user.name}'),
     onError: (request, error, fallback) => print('Error: ${error.message}'),
   );
 }
 ```
+
+> Note: `mutation.mutationKey` and `query.queryKey` remain available for state inspection
+> (`exists`, `isPending`, `error`, `invalidate`, etc.). The convenience methods on the serializable
+> just hide the chain for the rendering-path verbs (`mutate`, `query`, `infiniteQuery`, `definition`).
 
 ## Key Concepts
 

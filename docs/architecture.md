@@ -20,7 +20,7 @@ Consumers therefore still need to learn the relevant parts of `cached_query_flut
 - **Cache key generation is unified.** All three serializables expose `String get keyGenerator`.
 - **Builders and listeners adapt the underlying streams.** `TypedQueryBuilder`, `TypedMutationBuilder`, `TypedInfiniteQueryBuilder`, `TypedQueryListener`, `TypedMutationListener` are thin wrappers over the upstream `Query.stream` / `Mutation.stream` / `InfiniteQuery.stream`.
 - **Error handling is uniform.** `QueryException` and `MutationException` are owned by this library; the `errorMapper` contract translates `ErrorType → QueryException/MutationException` consistently.
-- **Outputs are upstream types.** `queryKey.query()` returns `Query<T>`; `mutationKey.definition()` returns `Mutation<T, R>`; `infiniteQueryKey.query()` returns `InfiniteQuery<T, A>`. Consumers introspect `state` / `stream` / `fetch()` / `getNextPage()` directly on those.
+- **Outputs are upstream types.** `request.query()` returns `Query<T>`; `request.definition()` returns `Mutation<T, R>`; `request.infiniteQuery()` returns `InfiniteQuery<T, A>`. Consumers introspect `state` / `stream` / `fetch()` / `getNextPage()` directly on those. The `*Key` types (`queryKey`, `mutationKey`, `infiniteQueryKey`) remain on each serializable as the inspection surface (`exists`, `isPending`, `error`, `invalidate`, `updateData`, etc.) but are no longer required for the rendering path — the convenience methods on the serializable extension hide them.
 
 ## When to revisit
 
