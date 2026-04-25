@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -336,42 +338,55 @@ void main() {
     });
 
     test('wraps an unknown stored error in a fallback QueryException(500)', () async {
-      // Force a non-ErrorType, non-QueryException into state.error: a query that fails AFTER an
-      // await with a plain Exception. _wrappedQueryFn wraps non-ErrorType errors as QueryException
-      // with status 500 'An unhandled exception has taken place ...'.
-      when(mockApiService.getUser(5)).thenAnswer((_) async {
-        await Future<void>.delayed(const Duration(milliseconds: 1));
-        throw Exception('mystery failure');
-      });
-
+      // The wrapper's _wrappedQueryFn pre-wraps non-ErrorType throws as QueryException — so a
+      // wrapper-driven fetch never reaches the getter's `Unhandled error:` fallback branch.
+      // Bypass the wrapper by seeding the cache with a raw Query under the same key/cache; that
+      // stores a plain Exception in state.error, which exercises the fallback branch.
       final request = GetUserQuery(userId: 5, apiService: mockApiService, localCache: cachedQuery);
       final queryKey = QueryKey(request);
-      await queryKey.query().fetch();
+
+      final rawQuery = Query<User>(
+        cache: cachedQuery,
+        key: queryKey.rawKey,
+        queryFn: () async => throw Exception('mystery failure'),
+        config: const QueryConfig(staleDuration: Duration.zero, ignoreCacheDuration: true),
+      );
+      await rawQuery.fetch();
 
       expect(queryKey.isError, isTrue);
       final err = queryKey.error;
       expect(err, isA<QueryException>());
       expect(err!.statusCode, 500);
+      expect(err.message, contains('Unhandled error:'));
+      expect(err.message, contains('mystery failure'));
     });
 
-    test('returns null after a successful fetch following a prior failure (regression: stale-error guard)', () async {
-      // Pre-#102: state.error could remain non-null on a non-error state, so .error returned a
-      // value while .isError was false. This test fetches an error first, then a success on the
-      // SAME key, and asserts the wrapper reflects the new (non-error) state.
+    test('returns null mid-refetch even if state.error retains the previous failure (regression: stale-error guard)', () async {
+      // First fetch: error.
       when(mockApiService.getUser(6)).thenThrow(ApiError('first', 503));
-
       final request = GetUserQuery(userId: 6, apiService: mockApiService, localCache: cachedQuery);
       final queryKey = QueryKey(request);
       await queryKey.query().fetch();
       expect(queryKey.isError, isTrue);
 
-      // Now flip the mock to succeed and trigger a refetch on the same key.
+      // Second fetch: slow success controlled by a Completer so we can observe state DURING loading.
       reset(mockApiService);
-      when(mockApiService.getUser(6)).thenAnswer((_) async => User(id: 6, name: 'OK', email: 'o@b.c'));
-      await queryKey.query().fetch();
+      final completer = Completer<User>();
+      when(mockApiService.getUser(6)).thenAnswer((_) => completer.future);
 
-      expect(queryKey.isError, isFalse, reason: 'after a successful refetch the wrapper must report not-error');
-      expect(queryKey.error, isNull, reason: 'after a successful refetch .error must mirror isError and be null');
+      final futureRefetch = queryKey.query().fetch();
+      // Yield once so the loading state transition lands.
+      await Future<void>.delayed(Duration.zero);
+
+      // The reported regression in #102: state.error could retain the previous failure during a
+      // loading state. The isError guard restored in #102 is what makes this assertion pass.
+      expect(queryKey.isError, isFalse, reason: 'mid-refetch the wrapper must report not-error');
+      expect(queryKey.error, isNull, reason: 'mid-refetch .error must mirror isError and be null');
+
+      completer.complete(User(id: 6, name: 'OK', email: 'o@b.c'));
+      await futureRefetch;
+      expect(queryKey.isError, isFalse, reason: 'and after the refetch settles, still not-error');
+      expect(queryKey.error, isNull);
     });
   });
 

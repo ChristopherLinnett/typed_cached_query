@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -510,42 +512,57 @@ void main() {
     });
 
     test('wraps an unknown stored error in a fallback QueryException(500)', () async {
-      when(mockApiService.getUsersPage(any)).thenAnswer((_) async {
-        await Future<void>.delayed(const Duration(milliseconds: 1));
-        throw Exception('mystery failure');
-      });
-
+      // The wrapper's queryFn closure pre-wraps non-ErrorType throws as QueryException — so a
+      // wrapper-driven fetch never reaches the getter's `Unhandled error:` fallback branch.
+      // Bypass the wrapper by seeding the cache with a raw InfiniteQuery under the same key/cache.
       final request = GetUsersInfiniteQuery(apiService: mockApiService, localCache: cachedQuery);
       final infiniteQueryKey = InfiniteQueryKey(request);
-      await infiniteQueryKey.query().fetch();
+
+      final rawInfiniteQuery = InfiniteQuery<PagedResponse, PageArgs>(
+        cache: cachedQuery,
+        key: infiniteQueryKey.rawKey,
+        queryFn: (_) async => throw Exception('mystery failure'),
+        getNextArg: (_) => PageArgs(page: 1, limit: 10),
+        config: const QueryConfig(staleDuration: Duration.zero, ignoreCacheDuration: true),
+      );
+      await rawInfiniteQuery.fetch();
 
       expect(infiniteQueryKey.isError, isTrue);
       final err = infiniteQueryKey.error;
       expect(err, isA<QueryException>());
       expect(err!.statusCode, 500);
+      expect(err.message, contains('Unhandled error:'));
+      expect(err.message, contains('mystery failure'));
     });
 
-    test('returns null after a successful fetch following a prior failure (regression: stale-error guard)', () async {
+    test('returns null mid-refetch even if state.error retains the previous failure (regression: stale-error guard)', () async {
+      // First fetch: error.
       when(mockApiService.getUsersPage(any)).thenThrow(ApiError('first', 503));
-
       final request = GetUsersInfiniteQuery(apiService: mockApiService, localCache: cachedQuery);
       final infiniteQueryKey = InfiniteQueryKey(request);
       await infiniteQueryKey.query().fetch();
       expect(infiniteQueryKey.isError, isTrue);
 
-      // Flip mock to success and refetch on the same key.
+      // Second fetch: slow success controlled by a Completer so we can observe state DURING loading.
       reset(mockApiService);
-      final pageResponse = PagedResponse(
+      final completer = Completer<PagedResponse>();
+      when(mockApiService.getUsersPage(any)).thenAnswer((_) => completer.future);
+
+      final futureRefetch = infiniteQueryKey.query().fetch();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(infiniteQueryKey.isError, isFalse, reason: 'mid-refetch the wrapper must report not-error');
+      expect(infiniteQueryKey.error, isNull, reason: 'mid-refetch .error must mirror isError and be null');
+
+      completer.complete(PagedResponse(
         users: [User(id: 1, name: 'Recovered', email: 'r@b.c')],
         page: 1,
         totalPages: 1,
         hasNext: false,
-      );
-      when(mockApiService.getUsersPage(any)).thenAnswer((_) async => pageResponse);
-      await infiniteQueryKey.query().fetch();
-
-      expect(infiniteQueryKey.isError, isFalse, reason: 'after a successful refetch the wrapper must report not-error');
-      expect(infiniteQueryKey.error, isNull, reason: 'after a successful refetch .error must mirror isError and be null');
+      ));
+      await futureRefetch;
+      expect(infiniteQueryKey.isError, isFalse);
+      expect(infiniteQueryKey.error, isNull);
     });
   });
 
