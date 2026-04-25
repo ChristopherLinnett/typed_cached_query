@@ -477,6 +477,78 @@ void main() {
     });
   });
 
+  group('InfiniteQueryKey error getter', () {
+    test('returns null when state is not in error', () async {
+      final pageResponse = PagedResponse(
+        users: [User(id: 1, name: 'John', email: 'john@example.com')],
+        page: 1,
+        totalPages: 1,
+        hasNext: false,
+      );
+      when(mockApiService.getUsersPage(any)).thenAnswer((_) async => pageResponse);
+
+      final request = GetUsersInfiniteQuery(apiService: mockApiService, localCache: cachedQuery);
+      final infiniteQueryKey = InfiniteQueryKey(request);
+      await infiniteQueryKey.query().fetch();
+
+      expect(infiniteQueryKey.isError, isFalse);
+      expect(infiniteQueryKey.error, isNull, reason: 'error must mirror isError — never returns a value when isError is false');
+    });
+
+    test('maps a stored ErrorType via errorMapper', () async {
+      when(mockApiService.getUsersPage(any)).thenThrow(ApiError('boom', 503));
+
+      final request = GetUsersInfiniteQuery(apiService: mockApiService, localCache: cachedQuery);
+      final infiniteQueryKey = InfiniteQueryKey(request);
+      await infiniteQueryKey.query().fetch();
+
+      expect(infiniteQueryKey.isError, isTrue);
+      final err = infiniteQueryKey.error;
+      expect(err, isA<QueryException>());
+      expect(err!.message, contains('API Error: boom'));
+      expect(err.statusCode, 503);
+    });
+
+    test('wraps an unknown stored error in a fallback QueryException(500)', () async {
+      when(mockApiService.getUsersPage(any)).thenAnswer((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 1));
+        throw Exception('mystery failure');
+      });
+
+      final request = GetUsersInfiniteQuery(apiService: mockApiService, localCache: cachedQuery);
+      final infiniteQueryKey = InfiniteQueryKey(request);
+      await infiniteQueryKey.query().fetch();
+
+      expect(infiniteQueryKey.isError, isTrue);
+      final err = infiniteQueryKey.error;
+      expect(err, isA<QueryException>());
+      expect(err!.statusCode, 500);
+    });
+
+    test('returns null after a successful fetch following a prior failure (regression: stale-error guard)', () async {
+      when(mockApiService.getUsersPage(any)).thenThrow(ApiError('first', 503));
+
+      final request = GetUsersInfiniteQuery(apiService: mockApiService, localCache: cachedQuery);
+      final infiniteQueryKey = InfiniteQueryKey(request);
+      await infiniteQueryKey.query().fetch();
+      expect(infiniteQueryKey.isError, isTrue);
+
+      // Flip mock to success and refetch on the same key.
+      reset(mockApiService);
+      final pageResponse = PagedResponse(
+        users: [User(id: 1, name: 'Recovered', email: 'r@b.c')],
+        page: 1,
+        totalPages: 1,
+        hasNext: false,
+      );
+      when(mockApiService.getUsersPage(any)).thenAnswer((_) async => pageResponse);
+      await infiniteQueryKey.query().fetch();
+
+      expect(infiniteQueryKey.isError, isFalse, reason: 'after a successful refetch the wrapper must report not-error');
+      expect(infiniteQueryKey.error, isNull, reason: 'after a successful refetch .error must mirror isError and be null');
+    });
+  });
+
   group('InfiniteQueryKey Pagination Logic', () {
     test('should correctly determine when max is reached', () async {
       // Last page response

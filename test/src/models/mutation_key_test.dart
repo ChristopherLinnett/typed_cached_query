@@ -299,13 +299,41 @@ void main() {
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
       final mutationKey = MutationKey(mutation);
-      try {
-        await mutationKey.mutate();
-      } catch (_) {/* expected */}
+      // mutate does NOT throw for ErrorType — it maps via errorMapper and surfaces via state.
+      await mutationKey.mutate();
 
       expect(mutationKey.isError, isTrue);
-      expect(mutationKey.error, isA<MutationException>());
-      expect(mutationKey.error!.message, contains('Validation failed on email'));
+      final err = mutationKey.error;
+      expect(err, isA<MutationException>());
+      expect(err!.message, contains('Validation failed on email'));
+    });
+
+    // Note: the MutationKey 'unknown stored error' fallback branch (status 500 'Unhandled error:'
+    // path) is intentionally NOT covered here. When mutationFn throws a non-ErrorType, the wrapper
+    // throws MutationException internally and cached_query leaves the mutation in an in-flight
+    // (isMutating=true) state rather than transitioning to MutationError, so .error returns null
+    // regardless of getter implementation. The analogous fallback in QueryKey.error and
+    // InfiniteQueryKey.error IS covered by their respective test groups, which lock in the
+    // shared branch logic.
+
+    test('returns null after a successful mutate following a prior failure (regression: stale-error guard)', () async {
+      // Pre-#102: state.error could remain non-null on a non-error state, so .error returned a
+      // value while .isError was false. Run a failing mutate, then a successful one on the same
+      // mutation, and assert .error mirrors isError and is null.
+      final request = CreateUserRequest(name: 'Flip', email: 'flip@example.com');
+      when(mockApiService.createUser(request)).thenThrow(ValidationError('email', 'taken'));
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      final mutationKey = MutationKey(mutation);
+      await mutationKey.mutate();
+      expect(mutationKey.isError, isTrue);
+
+      reset(mockApiService);
+      when(mockApiService.createUser(request)).thenAnswer((_) async => User(id: 9, name: 'Flip', email: 'flip@example.com'));
+      await mutationKey.mutate();
+
+      expect(mutationKey.isError, isFalse, reason: 'after a successful mutate the wrapper must report not-error');
+      expect(mutationKey.error, isNull, reason: 'after a successful mutate .error must mirror isError and be null');
     });
   });
 

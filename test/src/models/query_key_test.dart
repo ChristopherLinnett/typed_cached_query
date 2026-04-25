@@ -311,10 +311,14 @@ void main() {
 
       final request = GetUserQuery(userId: 2, apiService: mockApiService, localCache: cachedQuery);
       final queryKey = QueryKey(request);
-      await queryKey.query().fetch();
+      final query = queryKey.query();
+      await query.fetch();
 
       expect(queryKey.isError, isTrue);
+      // Identity check — the getter must return the SAME QueryException instance from state,
+      // not a wrapped or recreated one.
       expect(queryKey.error, isA<QueryException>());
+      expect(queryKey.error, same(query.state.error));
     });
 
     test('maps a stored ErrorType via errorMapper', () async {
@@ -322,13 +326,52 @@ void main() {
 
       final request = GetUserQuery(userId: 3, apiService: mockApiService, localCache: cachedQuery);
       final queryKey = QueryKey(request);
-      try {
-        await queryKey.query().fetch();
-      } catch (_) {/* expected */}
+      await queryKey.query().fetch();
 
       expect(queryKey.isError, isTrue);
-      expect(queryKey.error, isA<QueryException>());
-      expect(queryKey.error!.message, contains('API Error: x'));
+      final err = queryKey.error;
+      expect(err, isA<QueryException>());
+      expect(err!.message, contains('API Error: x'));
+      expect(err.statusCode, 503);
+    });
+
+    test('wraps an unknown stored error in a fallback QueryException(500)', () async {
+      // Force a non-ErrorType, non-QueryException into state.error: a query that fails AFTER an
+      // await with a plain Exception. _wrappedQueryFn wraps non-ErrorType errors as QueryException
+      // with status 500 'An unhandled exception has taken place ...'.
+      when(mockApiService.getUser(5)).thenAnswer((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 1));
+        throw Exception('mystery failure');
+      });
+
+      final request = GetUserQuery(userId: 5, apiService: mockApiService, localCache: cachedQuery);
+      final queryKey = QueryKey(request);
+      await queryKey.query().fetch();
+
+      expect(queryKey.isError, isTrue);
+      final err = queryKey.error;
+      expect(err, isA<QueryException>());
+      expect(err!.statusCode, 500);
+    });
+
+    test('returns null after a successful fetch following a prior failure (regression: stale-error guard)', () async {
+      // Pre-#102: state.error could remain non-null on a non-error state, so .error returned a
+      // value while .isError was false. This test fetches an error first, then a success on the
+      // SAME key, and asserts the wrapper reflects the new (non-error) state.
+      when(mockApiService.getUser(6)).thenThrow(ApiError('first', 503));
+
+      final request = GetUserQuery(userId: 6, apiService: mockApiService, localCache: cachedQuery);
+      final queryKey = QueryKey(request);
+      await queryKey.query().fetch();
+      expect(queryKey.isError, isTrue);
+
+      // Now flip the mock to succeed and trigger a refetch on the same key.
+      reset(mockApiService);
+      when(mockApiService.getUser(6)).thenAnswer((_) async => User(id: 6, name: 'OK', email: 'o@b.c'));
+      await queryKey.query().fetch();
+
+      expect(queryKey.isError, isFalse, reason: 'after a successful refetch the wrapper must report not-error');
+      expect(queryKey.error, isNull, reason: 'after a successful refetch .error must mirror isError and be null');
     });
   });
 
