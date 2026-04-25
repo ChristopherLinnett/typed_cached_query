@@ -16,56 +16,67 @@ class QueryKey<RequestType extends QuerySerializable<ReturnType, ErrorType>, Ret
     CachedQuery? cache,
   }) {
     final queryCache = cache ?? request.cache ?? CachedQuery.instance;
+    _validateConfig(config);
+    return Query(
+      key: _valueKey,
+      queryFn: _wrappedQueryFn,
+      onError: _wrappedOnError(onError),
+      onSuccess: onSuccess,
+      config: _buildConfig(config, queryCache),
+      cache: queryCache,
+    );
+  }
+
+  void _validateConfig(QueryConfig<ReturnType>? config) {
     if (config != null && request.storeQuery && request.storageSerializer == null) {
       throw ArgumentError(
         'storageSerializer must be provided when using storeQuery in QueryConfig for QueryKey<$RequestType, $ReturnType, $ErrorType>.',
       );
     }
-    return Query(
-      key: _valueKey,
-      queryFn: () {
-        try {
-          return request.queryFn().then((response) {
-            try {
-              return request.responseHandler(response);
-            } catch (e) {
-              throw FormatException('parsing the response of type ${response.runtimeType} to $ReturnType failed: ${e.toString()}');
-            }
-          });
-        } catch (e) {
-          if (e is ErrorType) rethrow;
-          if (e is FormatException) throw QueryException(e.message, 400);
+  }
 
-          /// Will always be caught by th onError handler in the query and stop execution.
-          /// Recommend to always finish the query function by throwing any unpredicted errors as [ErrorType].
-          throw QueryException(
-            'An unhandled exception has taken place, please update your definitions to include this error, error: ${e.toString()}',
-            500,
-          );
+  Future<ReturnType> _wrappedQueryFn() {
+    try {
+      return request.queryFn().then((response) {
+        try {
+          return request.responseHandler(response);
+        } catch (e) {
+          throw FormatException('parsing the response of type ${response.runtimeType} to $ReturnType failed: ${e.toString()}');
         }
-      },
-      onError: (error) => error is QueryException
-          /// if the error is not handled, it will throw as QueryException with generic message and error contents turned as [String].
-          ? throw error
-          : onError?.call(request.errorMapper(error as ErrorType)),
-      onSuccess: onSuccess,
-      config: QueryConfig(
-        storageSerializer: request.storageSerializer,
-        storageDeserializer: request.storageSerializer == null ? null : (map) => request.storageDeserializer!(map as Map<String, dynamic>),
-        storeQuery: request.storeQuery,
-        shouldFetch: config?.shouldFetch,
-        storageDuration: config?.storageDuration,
-        pollingInterval: config?.pollingInterval,
-        pollInactive: config?.pollInactive ?? false,
-        ignoreCacheDuration: config?.ignoreCacheDuration,
-        staleDuration: config?.staleDuration,
-        cacheDuration: config?.cacheDuration,
-        shouldRethrow: config?.shouldRethrow,
-        refetchOnResume: config?.refetchOnResume,
-        refetchOnConnection: config?.refetchOnConnection,
-      ).mergeWithGlobal(queryCache.defaultConfig),
-      cache: cache ?? request.cache ?? CachedQuery.instance,
-    );
+      });
+    } catch (e) {
+      if (e is ErrorType) rethrow;
+      if (e is FormatException) throw QueryException(e.message, 400);
+      throw QueryException(
+        'An unhandled exception has taken place, please update your definitions to include this error, error: ${e.toString()}',
+        500,
+      );
+    }
+  }
+
+  void Function(dynamic) _wrappedOnError(void Function(QueryException)? userOnError) {
+    return (error) {
+      if (error is QueryException) throw error;
+      userOnError?.call(request.errorMapper(error as ErrorType));
+    };
+  }
+
+  QueryConfig<ReturnType> _buildConfig(QueryConfig<ReturnType>? config, CachedQuery queryCache) {
+    return QueryConfig<ReturnType>(
+      storageSerializer: request.storageSerializer,
+      storageDeserializer: request.storageSerializer == null ? null : (map) => request.storageDeserializer!(map as Map<String, dynamic>),
+      storeQuery: request.storeQuery,
+      shouldFetch: config?.shouldFetch,
+      storageDuration: config?.storageDuration,
+      pollingInterval: config?.pollingInterval,
+      pollInactive: config?.pollInactive ?? false,
+      ignoreCacheDuration: config?.ignoreCacheDuration,
+      staleDuration: config?.staleDuration,
+      cacheDuration: config?.cacheDuration,
+      shouldRethrow: config?.shouldRethrow,
+      refetchOnResume: config?.refetchOnResume,
+      refetchOnConnection: config?.refetchOnConnection,
+    ).mergeWithGlobal(queryCache.defaultConfig);
   }
 
   Cacheable<QueryStatus<ReturnType>>? get _getQuery => _cache.getQuery(_valueKey);
