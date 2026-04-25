@@ -94,14 +94,11 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
   bool get isError => _getInfiniteQuery != null && _getInfiniteQuery!.state.isError;
   bool get hasReachedMax {
     if (_getInfiniteQuery == null) return false;
-
-    // Use the InfiniteQuery's native hasReachedMax method
     if (_getInfiniteQuery is InfiniteQuery<ReturnType, RequestData>) {
-      return (_getInfiniteQuery as InfiniteQuery<ReturnType, RequestData>).hasReachedMax();
+      return !(_getInfiniteQuery as InfiniteQuery<ReturnType, RequestData>).hasNextPage();
     }
-
-    // Fallback to checking the state
-    return _getInfiniteQuery!.state is InfiniteQuerySuccess && (_getInfiniteQuery!.state as InfiniteQuerySuccess).hasReachedMax;
+    final state = _getInfiniteQuery!.state;
+    return state is InfiniteQuerySuccess<ReturnType, RequestData> && !state.hasNextPage;
   }
 
   QueryException? get error =>

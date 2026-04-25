@@ -52,6 +52,6 @@ class _TypedInfiniteQueryBuilderState<T, A> extends State<TypedInfiniteQueryBuil
 
   @override
   Widget build(BuildContext context) {
-    return widget.builder(context, _currentState, widget.query.getNextPage, widget.query.hasReachedMax());
+    return widget.builder(context, _currentState, widget.query.getNextPage, !widget.query.hasNextPage());
   }
 }
