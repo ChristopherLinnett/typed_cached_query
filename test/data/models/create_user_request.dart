@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:typed_cached_query/src/errors/query_exception.dart';
 import 'package:typed_cached_query/src/models/serializable.dart';
@@ -17,7 +19,7 @@ class CreateUserRequest extends MutationSerializable<CreateUserRequest, User, Va
   MutationCache? get cache => _cache;
 
   @override
-  String get keyGenerator => 'create_user_${name}_$email';
+  String get keyGenerator => 'create_user_${jsonEncode(toJson())}';
 
   @override
   OnErrorResults<CreateUserRequest, User?> errorMapper(CreateUserRequest request, ValidationError error, User? fallback) {
