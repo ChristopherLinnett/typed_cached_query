@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,19 @@ class _RecordingObserver extends QueryObserver {
   void onChange(dynamic query, dynamic state) {
     onChangeCount += 1;
   }
+}
+
+class _StubStorage implements StorageInterface {
+  @override
+  FutureOr<StoredQuery?> get(String key) => null;
+  @override
+  void delete(String key) {}
+  @override
+  void put(StoredQuery query) {}
+  @override
+  void deleteAll() {}
+  @override
+  void close() {}
 }
 
 void main() {
@@ -43,20 +58,37 @@ void main() {
   });
 
   group('TypedCachedQuery.configureFlutter', () {
-    // CachedQuery enforces config-set-once per isolate, so all forwarding assertions
-    // run against a single configureFlutter call.
-    test('forwards observers and config to CachedQuery.instance', () {
+    // CachedQuery enforces config-set-once per isolate, so all forwarding assertions and the
+    // observer end-to-end check share a single configureFlutter call.
+    test('forwards observers, config, storage and custom streams to CachedQuery.instance', () async {
       final observer = _RecordingObserver();
+      final storage = _StubStorage();
       const customConfig = GlobalQueryConfig(refetchOnResume: false);
+      final lifecycleStream = const Stream<AppState>.empty();
+      final connectionStream = const Stream<ConnectionStatus>.empty();
 
       TypedCachedQuery.configureFlutter(
         neverCheckConnection: true,
+        storage: storage,
         config: customConfig,
         observers: [observer],
+        lifecycleStream: lifecycleStream,
+        connectionStream: connectionStream,
       );
 
       expect(CachedQuery.instance.observers, contains(observer));
       expect(CachedQuery.instance.defaultConfig.refetchOnResume, isFalse);
+      expect(identical(CachedQuery.instance.storage, storage), isTrue, reason: 'storage must be forwarded by identity to the singleton');
+
+      // Observer end-to-end: drive a real query through the singleton and assert the observer fires.
+      final query = Query<String>(
+        cache: CachedQuery.instance,
+        key: 'cfg-test-q',
+        queryFn: () async => 'hi',
+        config: const QueryConfig(staleDuration: Duration.zero, ignoreCacheDuration: true),
+      );
+      await query.fetch();
+      expect(observer.onChangeCount, greaterThan(0), reason: 'a registered observer must receive at least one onChange event after a real query fetch');
     });
   });
 }
