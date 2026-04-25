@@ -60,6 +60,33 @@ abstract class MockApiService {
 
 @GenerateMocks([MockApiService])
 // Test Mutation Implementations
+class _ParseFailingMutation extends MutationSerializable<_ParseFailingMutation, User, ValidationError> {
+  final CreateUserRequest request;
+  final MockApiService apiService;
+  final MutationCache? _cache;
+
+  _ParseFailingMutation({required this.request, required this.apiService, MutationCache? cache}) : _cache = cache;
+
+  @override
+  String get keyGenerator => 'parse_failing_${request.name}';
+
+  @override
+  OnErrorResults<_ParseFailingMutation, User?> errorMapper(_ParseFailingMutation request, ValidationError error, User? fallback) {
+    return OnErrorResults(request: request, error: MutationException(error.message, 400), fallback: fallback);
+  }
+
+  @override
+  User responseHandler(dynamic response) {
+    throw const FormatException('responseHandler intentionally failed');
+  }
+
+  @override
+  Future<dynamic> mutationFn() => apiService.createUser(request);
+
+  @override
+  MutationCache? get cache => _cache;
+}
+
 class CreateUserMutation extends MutationSerializable<CreateUserMutation, User, ValidationError> {
   final CreateUserRequest request;
   final MockApiService apiService;
@@ -313,6 +340,36 @@ void main() {
     test('defaultMutationBackoff returns 100 ms × attempt', () {
       expect(defaultMutationBackoff(1), const Duration(milliseconds: 100));
       expect(defaultMutationBackoff(3), const Duration(milliseconds: 300));
+    });
+  });
+
+  group('MutationKey responseHandler error wrapping', () {
+    test('responseHandler exception is wrapped as MutationException(400) and not retried', () async {
+      final request = CreateUserRequest(name: 'Bo', email: 'bo@example.com');
+      var attempts = 0;
+      when(mockApiService.createUser(request)).thenAnswer((_) async {
+        attempts += 1;
+        return User(id: 1, name: 'Bo', email: 'bo@example.com');
+      });
+
+      // Subclass the existing fixture so its responseHandler always throws.
+      final mutation = _ParseFailingMutation(request: request, apiService: mockApiService, cache: mutationCache);
+
+      Object? thrown;
+      try {
+        await MutationKey<_ParseFailingMutation, User, ValidationError>(mutation).mutate(
+          retryAttempts: 3,
+          shouldRetry: (_) => true,
+        );
+      } catch (e) {
+        thrown = e;
+      }
+
+      expect(thrown, isA<MutationException>());
+      expect((thrown as MutationException).statusCode, 400, reason: 'parsing errors must surface as a 400 — same shape as QueryKey/InfiniteQueryKey');
+      expect(thrown.message, contains('parsing the response'));
+      // Parse failures are NOT retryable — only ErrorType failures are.
+      expect(attempts, 1, reason: 'a parse failure must NOT be retried, even when retryAttempts/shouldRetry are set');
     });
   });
 
