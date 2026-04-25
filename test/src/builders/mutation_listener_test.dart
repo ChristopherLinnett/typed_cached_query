@@ -43,7 +43,7 @@ void main() {
     expect(calls, greaterThanOrEqualTo(1));
   });
 
-  testWidgets('onSuccess fires after a successful mutation', (tester) async {
+  testWidgets('onSuccess fires exactly once per success transition (not on every emission while in success)', (tester) async {
     final mutation = _makeMutation(cache, 'ml-success', (i) async => 'ok-$i');
     var successes = 0;
     await tester.pumpWidget(
@@ -57,7 +57,39 @@ void main() {
     );
     await mutation.mutate(1);
     await tester.pumpAndSettle();
-    expect(successes, greaterThanOrEqualTo(1));
+    final afterFirstMutate = successes;
+    expect(afterFirstMutate, 1, reason: 'one mutate cycle must produce exactly one success transition');
+
+    // Force an additional pump cycle without producing a new success transition.
+    await tester.pump(const Duration(milliseconds: 10));
+    expect(successes, afterFirstMutate, reason: 'no callback should fire while the state remains in success without a transition');
+
+    // Second mutate produces a second success transition.
+    await mutation.mutate(2);
+    await tester.pumpAndSettle();
+    expect(successes, 2, reason: 'a second mutate cycle adds exactly one further success transition');
+  });
+
+  testWidgets('onSuccess does not fire on a stream replay of the same success state (didUpdateWidget swap to same mutation result)', (tester) async {
+    final mutation = _makeMutation(cache, 'ml-replay', (i) async => 'ok-$i');
+    await mutation.mutate(1);
+    // Wait for completion before listener attaches — listener attaches AFTER state is success.
+
+    var successes = 0;
+    await tester.pumpWidget(
+      _harness(
+        TypedMutationListener<String, int>(
+          mutation: mutation,
+          onSuccess: (_, _) => successes += 1,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // BehaviorSubject replays the current (success) state on subscribe. _previousState was already
+    // set to mutation.state (success) before listen, so handle(success, success) is not a transition.
+    expect(successes, 0, reason: 'replayed success state with no actual transition must not fire onSuccess');
   });
 
   testWidgets('onError fires after a failing mutation', (tester) async {
