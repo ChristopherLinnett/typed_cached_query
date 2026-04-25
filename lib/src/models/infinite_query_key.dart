@@ -101,8 +101,14 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
     return state is InfiniteQuerySuccess<ReturnType, RequestData> && !state.hasNextPage;
   }
 
-  QueryException? get error =>
-      _getInfiniteQuery == null || !_getInfiniteQuery!.state.isError ? null : request.errorMapper(_getInfiniteQuery!.state.error! as ErrorType);
+  QueryException? get error {
+    if (_getInfiniteQuery == null) return null;
+    final stateError = _getInfiniteQuery!.state.error;
+    if (stateError == null) return null;
+    if (stateError is QueryException) return stateError;
+    if (stateError is ErrorType) return request.errorMapper(stateError);
+    return QueryException('Unhandled error: $stateError', 500);
+  }
 
   /// Get all pages as a flat list
   List<ReturnType> get allPages {

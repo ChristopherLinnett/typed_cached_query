@@ -85,7 +85,14 @@ class QueryKey<RequestType extends QuerySerializable<ReturnType, ErrorType>, Ret
   bool get isPending => _getQuery != null && _getQuery!.state.isLoading && _getQuery!.state.data == null;
   bool get isRefetching => _getQuery != null && _getQuery!.state.isLoading && _getQuery!.state.data != null;
   bool get isError => _getQuery != null && _getQuery!.state.isError;
-  QueryException? get error => _getQuery == null || !_getQuery!.state.isError ? null : request.errorMapper(_getQuery!.state.error! as ErrorType);
+  QueryException? get error {
+    if (_getQuery == null) return null;
+    final stateError = _getQuery!.state.error;
+    if (stateError == null) return null;
+    if (stateError is QueryException) return stateError;
+    if (stateError is ErrorType) return request.errorMapper(stateError);
+    return QueryException('Unhandled error: $stateError', 500);
+  }
 
   T updateData<T>(T Function(ReturnType? existingData) updateFunction) {
     if (_getQuery == null) {
