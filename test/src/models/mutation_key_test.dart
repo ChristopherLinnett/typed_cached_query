@@ -134,9 +134,8 @@ void main() {
     test('should generate correct key from request', () {
       final request = CreateUserRequest(name: 'John', email: 'john@example.com');
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
 
-      expect(mutationKey, isNotNull);
+      expect(mutation.mutationKey, isNotNull);
     });
 
     test('should return mutation key from serializable', () {
@@ -150,7 +149,7 @@ void main() {
     test('should indicate mutation does not exist initially', () {
       final request = CreateUserRequest(name: 'John', email: 'john@example.com');
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
+      final mutationKey = mutation.mutationKey;
 
       expect(mutationKey.exists, false);
       expect(mutationKey.isPending, false);
@@ -167,10 +166,9 @@ void main() {
 
       when(mockApiService.createUser(request)).thenAnswer((_) async => user);
 
-      final mutation = CreateUserMutation(request: request, apiService: mockApiService);
-      final mutationKey = MutationKey(mutation);
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
 
-      final result = await mutationKey.mutate();
+      final result = await mutation.mutate();
 
       expect(result.data, user);
       verify(mockApiService.createUser(request)).called(1);
@@ -182,10 +180,9 @@ void main() {
       when(mockApiService.createUser(request)).thenThrow(ValidationError('email', 'Invalid email format'));
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
 
       MutationException? capturedError;
-      await mutationKey.mutate(onError: (req, error, fallback) => capturedError = error);
+      await mutation.mutate(onError: (req, error, fallback) => capturedError = error);
 
       expect(capturedError, isNotNull);
       expect(capturedError!.message, contains('Validation failed on email'));
@@ -198,10 +195,9 @@ void main() {
       when(mockApiService.createUser(request)).thenThrow(Exception('Database connection failed'));
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
 
       expect(
-        () => mutationKey.mutate(),
+        () => mutation.mutate(),
         throwsA(isA<MutationException>().having((e) => e.message, 'message', contains('An unhandled exception has taken place'))),
       );
     });
@@ -218,11 +214,10 @@ void main() {
       });
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
 
       // When no onTimeout is provided, TimeoutException becomes MutationException (fail fast)
       expect(
-        () => mutationKey.mutate(timeoutSeconds: 1), // 1 second timeout, but response takes 2 seconds
+        () => mutation.mutate(timeoutSeconds: 1), // 1 second timeout, but response takes 2 seconds
         throwsA(isA<MutationException>().having((e) => e.message, 'message', contains('An unhandled exception has taken place'))),
       );
     });
@@ -238,10 +233,9 @@ void main() {
       });
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
 
       // When onTimeout is provided, TimeoutException is rethrown → Mutation catches it → calls onTimeout
-      final result = await mutationKey.mutate(
+      final result = await mutation.mutate(
         timeoutSeconds: 1, // 1 second timeout, but response takes 2 seconds
         onTimeout: (req) => timeoutRequest = req,
       );
@@ -255,10 +249,9 @@ void main() {
     test('should throw ArgumentError if onTimeout provided without timeoutSeconds', () {
       final request = CreateUserRequest(name: 'Test', email: 'test@example.com');
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
 
       expect(
-        () => mutationKey.mutate(onTimeout: (req) => {}), // onTimeout without timeoutSeconds
+        () => mutation.mutate(onTimeout: (req) => {}), // onTimeout without timeoutSeconds
         throwsA(isA<ArgumentError>().having((e) => e.message, 'message', contains('If onTimeout is provided, timeoutSeconds must also be provided'))),
       );
     });
@@ -270,9 +263,8 @@ void main() {
       when(mockApiService.createUser(request)).thenAnswer((_) async => user);
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
 
-      final result = await mutationKey.mutate(); // No timeout parameters
+      final result = await mutation.mutate(); // No timeout parameters
 
       expect(result.data, user);
       verify(mockApiService.createUser(request)).called(1);
@@ -286,8 +278,8 @@ void main() {
       when(mockApiService.createUser(request)).thenAnswer((_) async => user);
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
-      await mutationKey.mutate();
+      final mutationKey = mutation.mutationKey;
+      await mutation.mutate();
 
       expect(mutationKey.isError, isFalse);
       expect(mutationKey.error, isNull, reason: 'error must mirror isError — never returns a value when isError is false');
@@ -298,9 +290,9 @@ void main() {
       when(mockApiService.createUser(request)).thenThrow(ValidationError('email', 'taken'));
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
+      final mutationKey = mutation.mutationKey;
       // mutate does NOT throw for ErrorType — it maps via errorMapper and surfaces via state.
-      await mutationKey.mutate();
+      await mutation.mutate();
 
       expect(mutationKey.isError, isTrue);
       final err = mutationKey.error;
@@ -324,13 +316,13 @@ void main() {
       when(mockApiService.createUser(request)).thenThrow(ValidationError('email', 'taken'));
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final mutationKey = MutationKey(mutation);
-      await mutationKey.mutate();
+      final mutationKey = mutation.mutationKey;
+      await mutation.mutate();
       expect(mutationKey.isError, isTrue);
 
       reset(mockApiService);
       when(mockApiService.createUser(request)).thenAnswer((_) async => User(id: 9, name: 'Flip', email: 'flip@example.com'));
-      await mutationKey.mutate();
+      await mutation.mutate();
 
       expect(mutationKey.isError, isFalse, reason: 'after a successful mutate the wrapper must report not-error');
       expect(mutationKey.error, isNull, reason: 'after a successful mutate .error must mirror isError and be null');
@@ -349,7 +341,7 @@ void main() {
       });
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final result = await MutationKey(mutation).mutate(retryAttempts: 2, shouldRetry: (_) => true);
+      final result = await mutation.mutate(retryAttempts: 2, shouldRetry: (_) => true);
 
       expect(result.data, user);
       verify(mockApiService.createUser(request)).called(3);
@@ -372,7 +364,7 @@ void main() {
       }
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      await MutationKey(mutation).mutate(retryAttempts: 2, shouldRetry: (_) => true, backoff: record);
+      await mutation.mutate(retryAttempts: 2, shouldRetry: (_) => true, backoff: record);
 
       expect(invocations, [1, 2], reason: 'backoff is called once between attempts, with a 1-based attempt index');
     });
@@ -389,7 +381,7 @@ void main() {
       }
 
       final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
-      final result = await MutationKey(mutation).mutate(backoff: record);
+      final result = await mutation.mutate(backoff: record);
 
       expect(result.data, user);
       expect(invoked, isFalse);
@@ -398,6 +390,33 @@ void main() {
     test('defaultMutationBackoff returns 100 ms × attempt', () {
       expect(defaultMutationBackoff(1), const Duration(milliseconds: 100));
       expect(defaultMutationBackoff(3), const Duration(milliseconds: 300));
+    });
+  });
+
+  group('MutationSerializable.mutate convenience getter', () {
+    test('serializable.mutate(...) executes the same pipeline as the previous mutationKey.mutate', () async {
+      final request = CreateUserRequest(name: 'Bo', email: 'bo@example.com');
+      final user = User(id: 7, name: 'Bo', email: 'bo@example.com');
+      when(mockApiService.createUser(request)).thenAnswer((_) async => user);
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      // No `.mutationKey` chain — this is the new public entry point.
+      final result = await mutation.mutate();
+
+      expect(result.data, user);
+      verify(mockApiService.createUser(request)).called(1);
+    });
+
+    test('serializable.mutate(...) forwards optional parameters (onError)', () async {
+      final request = CreateUserRequest(name: 'Forwarded', email: 'f@b.c');
+      when(mockApiService.createUser(request)).thenThrow(ValidationError('email', 'taken'));
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      MutationException? captured;
+      await mutation.mutate(onError: (req, err, fb) => captured = err);
+
+      expect(captured, isA<MutationException>());
+      expect(captured!.statusCode, 400);
     });
   });
 
@@ -415,7 +434,7 @@ void main() {
 
       Object? thrown;
       try {
-        await MutationKey<_ParseFailingMutation, User, ValidationError>(mutation).mutate(
+        await mutation.mutate(
           retryAttempts: 3,
           shouldRetry: (_) => true,
         );
@@ -437,7 +456,7 @@ void main() {
       // a User with a sentinel suffix. If responseHandler were bypassed, result.data would be the
       // raw Map (not a User) and the assertions would fail.
       final mutation = _MapMutation(returnRaw: {'id': 7, 'name': 'Raw', 'email': 'raw@example.com'}, cache: mutationCache);
-      final result = await MutationKey(mutation).mutate();
+      final result = await mutation.mutate();
 
       expect(result.data, isA<User>(), reason: 'mutate result must be the User produced by responseHandler, not the raw Map from mutationFn');
       expect(result.data!.name, endsWith('-via-responseHandler'), reason: 'sentinel suffix proves responseHandler ran');

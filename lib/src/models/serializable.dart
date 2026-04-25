@@ -371,7 +371,49 @@ extension QuerySerializableExtension<T extends QuerySerializable<ReturnType, Err
 }
 
 extension MutationSerializableExtension<T extends MutationSerializable<T, ReturnType, ErrorType>, ReturnType, ErrorType> on T {
+  /// Returns a [MutationKey] for state inspection (`exists`, `isPending`, `error`, etc.) and for
+  /// constructing a long-lived `Mutation` instance via `mutationKey.definition(...)`.
   MutationKey<T, ReturnType, ErrorType> get mutationKey => MutationKey(this);
+
+  /// Convenience entry point: trigger this mutation directly from the serializable.
+  ///
+  /// **Purpose:** Replaces the previous `mutation.mutationKey.mutate(...)` chain with a single
+  /// verb on the serializable. The full named-parameter surface of [MutationKey] is preserved.
+  /// **Example:**
+  /// ```dart
+  /// final result = await createUserMutation.mutate(
+  ///   onSuccess: (user, _) => print(user),
+  /// );
+  /// ```
+  /// **Returns:** A [Future] resolving to the final [MutationState], identical to the
+  /// `mutationKey.definition(...).mutate(request)` path used internally.
+  Future<MutationState<ReturnType?>> mutate({
+    void Function(T, MutationException, ReturnType?)? onError,
+    void Function(ReturnType, T)? onSuccess,
+    MutationCache? cache,
+    FutureOr<ReturnType> Function(T)? onStartMutation,
+    List<QueryKey<dynamic, dynamic, dynamic>>? invalidateQueries,
+    List<QueryKey<dynamic, dynamic, dynamic>>? refetchQueries,
+    int? retryAttempts,
+    bool Function(ErrorType)? shouldRetry,
+    int? timeoutSeconds,
+    void Function(T)? onTimeout,
+    Duration Function(int attempt)? backoff,
+  }) => mutationKey
+      .definition(
+        onError: onError,
+        onSuccess: onSuccess,
+        cache: cache,
+        onStartMutation: onStartMutation,
+        invalidateQueries: invalidateQueries,
+        refetchQueries: refetchQueries,
+        retryAttempts: retryAttempts,
+        shouldRetry: shouldRetry,
+        timeoutSeconds: timeoutSeconds,
+        onTimeout: onTimeout,
+        backoff: backoff,
+      )
+      .mutate(this);
 }
 
 extension InfiniteQuerySerializableExtension<
