@@ -20,10 +20,10 @@ class TypedQueryListener<T> extends StatefulWidget {
   /// Called when the query loads successfully.
   final void Function(BuildContext context, QueryStatus<T> state)? onSuccess;
 
-  /// Called when the query starts loading.
+  /// Called when the query starts loading from a non-loading, no-data state (cold start).
   final void Function(BuildContext context, QueryStatus<T> state)? onLoading;
 
-    /// Called when the query starts loading.
+  /// Called when the query starts a refetch — i.e. transitions into loading while data is already present.
   final void Function(BuildContext context, QueryStatus<T> state)? onRefetching;
 
   /// Creates a [TypedQueryListener].
@@ -75,8 +75,12 @@ class _TypedQueryListenerState<T> extends State<TypedQueryListener<T>> {
 
     if (!previous.isError && current.isError && widget.onError != null) return widget.onError!(context, current);
     if (!previous.isSuccess && current.isSuccess && widget.onSuccess != null) return widget.onSuccess!(context, current);
+    // Refetch must be checked before onLoading: a refetch satisfies the !previous.isLoading && current.isLoading
+    // predicate, so without this earlier branch onRefetching would be unreachable.
+    if (previous.data != null && !previous.isLoading && current.isLoading && widget.onRefetching != null) {
+      return widget.onRefetching!(context, current);
+    }
     if (!previous.isLoading && current.isLoading && widget.onLoading != null) return widget.onLoading!(context, current);
-    if (previous.data != null && current.isLoading && widget.onRefetching != null) return widget.onRefetching!(context, current);
   }
 
   @override
