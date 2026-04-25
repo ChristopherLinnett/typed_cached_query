@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -311,10 +313,14 @@ void main() {
 
       final request = GetUserQuery(userId: 2, apiService: mockApiService, localCache: cachedQuery);
       final queryKey = QueryKey(request);
-      await queryKey.query().fetch();
+      final query = queryKey.query();
+      await query.fetch();
 
       expect(queryKey.isError, isTrue);
+      // Identity check — the getter must return the SAME QueryException instance from state,
+      // not a wrapped or recreated one.
       expect(queryKey.error, isA<QueryException>());
+      expect(queryKey.error, same(query.state.error));
     });
 
     test('maps a stored ErrorType via errorMapper', () async {
@@ -322,13 +328,65 @@ void main() {
 
       final request = GetUserQuery(userId: 3, apiService: mockApiService, localCache: cachedQuery);
       final queryKey = QueryKey(request);
-      try {
-        await queryKey.query().fetch();
-      } catch (_) {/* expected */}
+      await queryKey.query().fetch();
 
       expect(queryKey.isError, isTrue);
-      expect(queryKey.error, isA<QueryException>());
-      expect(queryKey.error!.message, contains('API Error: x'));
+      final err = queryKey.error;
+      expect(err, isA<QueryException>());
+      expect(err!.message, contains('API Error: x'));
+      expect(err.statusCode, 503);
+    });
+
+    test('wraps an unknown stored error in a fallback QueryException(500)', () async {
+      // The wrapper's _wrappedQueryFn pre-wraps non-ErrorType throws as QueryException — so a
+      // wrapper-driven fetch never reaches the getter's `Unhandled error:` fallback branch.
+      // Bypass the wrapper by seeding the cache with a raw Query under the same key/cache; that
+      // stores a plain Exception in state.error, which exercises the fallback branch.
+      final request = GetUserQuery(userId: 5, apiService: mockApiService, localCache: cachedQuery);
+      final queryKey = QueryKey(request);
+
+      final rawQuery = Query<User>(
+        cache: cachedQuery,
+        key: queryKey.rawKey,
+        queryFn: () async => throw Exception('mystery failure'),
+        config: const QueryConfig(staleDuration: Duration.zero, ignoreCacheDuration: true),
+      );
+      await rawQuery.fetch();
+
+      expect(queryKey.isError, isTrue);
+      final err = queryKey.error;
+      expect(err, isA<QueryException>());
+      expect(err!.statusCode, 500);
+      expect(err.message, contains('Unhandled error:'));
+      expect(err.message, contains('mystery failure'));
+    });
+
+    test('returns null mid-refetch even if state.error retains the previous failure (regression: stale-error guard)', () async {
+      // First fetch: error.
+      when(mockApiService.getUser(6)).thenThrow(ApiError('first', 503));
+      final request = GetUserQuery(userId: 6, apiService: mockApiService, localCache: cachedQuery);
+      final queryKey = QueryKey(request);
+      await queryKey.query().fetch();
+      expect(queryKey.isError, isTrue);
+
+      // Second fetch: slow success controlled by a Completer so we can observe state DURING loading.
+      reset(mockApiService);
+      final completer = Completer<User>();
+      when(mockApiService.getUser(6)).thenAnswer((_) => completer.future);
+
+      final futureRefetch = queryKey.query().fetch();
+      // Yield once so the loading state transition lands.
+      await Future<void>.delayed(Duration.zero);
+
+      // The reported regression in #102: state.error could retain the previous failure during a
+      // loading state. The isError guard restored in #102 is what makes this assertion pass.
+      expect(queryKey.isError, isFalse, reason: 'mid-refetch the wrapper must report not-error');
+      expect(queryKey.error, isNull, reason: 'mid-refetch .error must mirror isError and be null');
+
+      completer.complete(User(id: 6, name: 'OK', email: 'o@b.c'));
+      await futureRefetch;
+      expect(queryKey.isError, isFalse, reason: 'and after the refetch settles, still not-error');
+      expect(queryKey.error, isNull);
     });
   });
 
