@@ -3,11 +3,11 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:typed_cached_query/src/builders/infinite_query_builder.dart';
 
-InfiniteQuery<String, int> _makeInfinite(CachedQuery cache, String key, {required int maxPage}) {
+InfiniteQuery<String, int> _makeInfinite(CachedQuery cache, String key, {required int maxPage, String prefix = 'page'}) {
   return InfiniteQuery<String, int>(
     cache: cache,
     key: key,
-    queryFn: (page) async => 'page-$page',
+    queryFn: (page) async => '$prefix-$page',
     getNextArg: (data) {
       if (data == null || data.pages.isEmpty) return 1;
       final next = data.args.last + 1;
@@ -48,7 +48,7 @@ void main() {
   testWidgets('fetchNextPage callback advances pagination', (tester) async {
     final query = _makeInfinite(cache, 'iq-paginate', maxPage: 3);
 
-    Future<dynamic> Function()? capturedNext;
+    Future<InfiniteQueryStatus<String, int>?> Function()? capturedNext;
     await tester.pumpWidget(
       _harness(
         TypedInfiniteQueryBuilder<String, int>(
@@ -69,8 +69,8 @@ void main() {
   });
 
   testWidgets('didUpdateWidget swaps subscription when the query changes', (tester) async {
-    final qa = _makeInfinite(cache, 'iq-A', maxPage: 1);
-    final qb = _makeInfinite(cache, 'iq-B', maxPage: 1);
+    final qa = _makeInfinite(cache, 'iq-A', maxPage: 2, prefix: 'A');
+    final qb = _makeInfinite(cache, 'iq-B', maxPage: 2, prefix: 'B');
 
     Widget under(InfiniteQuery<String, int> q) => _harness(
       TypedInfiniteQueryBuilder<String, int>(
@@ -81,14 +81,21 @@ void main() {
 
     await tester.pumpWidget(under(qa));
     await tester.pumpAndSettle();
-    expect(find.text('page-1'), findsOneWidget);
+    expect(find.text('A-1'), findsOneWidget);
 
     await tester.pumpWidget(under(qb));
     await tester.pumpAndSettle();
-    expect(find.text('page-1'), findsOneWidget);
+    expect(find.text('B-1'), findsOneWidget);
+
+    // Drive the OLD query (qa) and assert the UI does not react — proves the swap dropped the
+    // old subscription rather than just ending up at the same value by coincidence.
+    await qa.refetch();
+    await tester.pumpAndSettle();
+    expect(find.text('B-1'), findsOneWidget);
+    expect(find.text('A-1'), findsNothing);
   });
 
-  testWidgets('dispose cancels subscription', (tester) async {
+  testWidgets('dispose-time mounted guard suppresses post-dispose setState', (tester) async {
     final query = _makeInfinite(cache, 'iq-dispose', maxPage: 1);
     await tester.pumpWidget(
       _harness(

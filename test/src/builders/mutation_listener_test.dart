@@ -93,6 +93,23 @@ void main() {
     expect(successes, 0, reason: 'replayed success state with no actual transition must not fire onSuccess');
   });
 
+  testWidgets('onLoading fires once on the loading transition of a mutation', (tester) async {
+    final mutation = _makeMutation(cache, 'ml-loading', (i) async => 'ok-$i');
+    var loadings = 0;
+    await tester.pumpWidget(
+      _harness(
+        TypedMutationListener<String, int>(
+          mutation: mutation,
+          onLoading: (_, _) => loadings += 1,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    await mutation.mutate(1);
+    await tester.pumpAndSettle();
+    expect(loadings, 1, reason: 'a mutate cycle must fire onLoading exactly once on the loading transition');
+  });
+
   testWidgets('onError fires after a failing mutation', (tester) async {
     final mutation = _makeMutation(cache, 'ml-error', (i) async => throw StateError('nope'));
     var errors = 0;
@@ -137,9 +154,14 @@ void main() {
 
     expect(dataA, dataABeforeSwap, reason: 'after swap, the old subscription must not deliver events');
     expect(dataB, greaterThanOrEqualTo(1));
+
+    // Drive the OLD mutation again — the old onData must remain silent.
+    await ma.mutate(3);
+    await tester.pumpAndSettle();
+    expect(dataA, dataABeforeSwap, reason: 'after swap, mutating the OLD instance must not deliver events to the old onData');
   });
 
-  testWidgets('dispose cancels the subscription', (tester) async {
+  testWidgets('dispose-time mounted guard suppresses post-dispose setState', (tester) async {
     final mutation = _makeMutation(cache, 'ml-dispose', (i) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return 'late-$i';
