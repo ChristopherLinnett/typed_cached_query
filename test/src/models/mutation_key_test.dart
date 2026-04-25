@@ -251,4 +251,68 @@ void main() {
       verify(mockApiService.createUser(request)).called(1);
     });
   });
+
+  group('MutationKey Backoff', () {
+    test('uses defaultMutationBackoff when no backoff is provided', () async {
+      final request = CreateUserRequest(name: 'Bo', email: 'bo@example.com');
+      final user = User(id: 1, name: 'Bo', email: 'bo@example.com');
+      var calls = 0;
+      when(mockApiService.createUser(request)).thenAnswer((_) async {
+        calls += 1;
+        if (calls < 3) throw ValidationError('email', 'temporary');
+        return user;
+      });
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      final result = await MutationKey(mutation).mutate(retryAttempts: 2, shouldRetry: (_) => true);
+
+      expect(result.data, user);
+      verify(mockApiService.createUser(request)).called(3);
+    });
+
+    test('invokes the supplied backoff function once per retry with 1-based attempt index', () async {
+      final request = CreateUserRequest(name: 'Bo', email: 'bo@example.com');
+      final user = User(id: 1, name: 'Bo', email: 'bo@example.com');
+      var calls = 0;
+      when(mockApiService.createUser(request)).thenAnswer((_) async {
+        calls += 1;
+        if (calls < 3) throw ValidationError('email', 'temporary');
+        return user;
+      });
+
+      final invocations = <int>[];
+      Duration record(int attempt) {
+        invocations.add(attempt);
+        return Duration.zero; // keep test fast
+      }
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      await MutationKey(mutation).mutate(retryAttempts: 2, shouldRetry: (_) => true, backoff: record);
+
+      expect(invocations, [1, 2], reason: 'backoff is called once between attempts, with a 1-based attempt index');
+    });
+
+    test('does not invoke backoff when no retry is requested', () async {
+      final request = CreateUserRequest(name: 'Solo', email: 'solo@example.com');
+      final user = User(id: 1, name: 'Solo', email: 'solo@example.com');
+      when(mockApiService.createUser(request)).thenAnswer((_) async => user);
+
+      var invoked = false;
+      Duration record(int _) {
+        invoked = true;
+        return Duration.zero;
+      }
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      final result = await MutationKey(mutation).mutate(backoff: record);
+
+      expect(result.data, user);
+      expect(invoked, isFalse);
+    });
+
+    test('defaultMutationBackoff returns 100 ms × attempt', () {
+      expect(defaultMutationBackoff(1), const Duration(milliseconds: 100));
+      expect(defaultMutationBackoff(3), const Duration(milliseconds: 300));
+    });
+  });
 }

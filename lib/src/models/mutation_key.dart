@@ -5,6 +5,10 @@ import 'package:typed_cached_query/src/errors/query_exception.dart';
 import 'package:typed_cached_query/src/models/query_key.dart';
 import 'package:typed_cached_query/src/models/serializable.dart';
 
+/// Default linear backoff used when no [backoff] is supplied: 100 ms × attempt.
+/// `attempt` is 1-based — i.e. called with 1 between attempts 1 and 2, 2 between 2 and 3, etc.
+Duration defaultMutationBackoff(int attempt) => Duration(milliseconds: 100 * attempt);
+
 class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnType, ErrorType>, ReturnType, ErrorType> {
   final RequestType request;
   MutationKey(this.request);
@@ -22,6 +26,7 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
     bool Function(ErrorType)? shouldRetry,
     int? timeoutSeconds,
     void Function(RequestType)? onTimeout,
+    Duration Function(int attempt)? backoff,
   }) {
     if ((retryAttempts == null) != (shouldRetry == null)) throw ArgumentError('Either provide both retryAttempts and shouldRetry, or neither.');
 
@@ -31,6 +36,7 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
 
     // Explicitly capture the onTimeout parameter to avoid closure capture issues
     final capturedOnTimeout = onTimeout;
+    final backoffFn = backoff ?? defaultMutationBackoff;
 
     return Mutation<ReturnType, RequestType>(
       key: _valueKey,
@@ -61,7 +67,7 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
             }
             if (shouldRetry == null || attempts >= maxAttempts || !shouldRetry(e as ErrorType)) rethrow;
 
-            await Future<void>.delayed(Duration(milliseconds: 100 * attempts));
+            await Future<void>.delayed(backoffFn(attempts));
             continue;
           }
         }
@@ -104,6 +110,7 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
     bool Function(ErrorType)? shouldRetry,
     int? timeoutSeconds,
     void Function(RequestType)? onTimeout,
+    Duration Function(int attempt)? backoff,
   }) => definition(
     onError: onError,
     onSuccess: onSuccess,
@@ -115,6 +122,7 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
     shouldRetry: shouldRetry,
     timeoutSeconds: timeoutSeconds,
     onTimeout: onTimeout,
+    backoff: backoff,
   ).mutate(request);
 
   bool get isPending => _getMutation != null && _getMutation!.state.isLoading && _getMutation!.state.data == null;
