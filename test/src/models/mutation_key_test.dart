@@ -393,6 +393,34 @@ void main() {
     });
   });
 
+  group('MutationSerializable.definition convenience method', () {
+    test('serializable.definition() resolves to a Mutation that can be triggered like mutationKey.definition()', () async {
+      final request = CreateUserRequest(name: 'Defn', email: 'd@example.com');
+      final user = User(id: 8, name: 'Defn', email: 'd@example.com');
+      when(mockApiService.createUser(request)).thenAnswer((_) async => user);
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      // No `.mutationKey` chain — this is the new public entry point for builders.
+      final defn = mutation.definition();
+      final result = await defn.mutate(mutation);
+
+      expect(result.data, user);
+    });
+
+    test('serializable.definition(...) forwards onSuccess', () async {
+      final request = CreateUserRequest(name: 'Forward', email: 'f@b.c');
+      final user = User(id: 9, name: 'Forward', email: 'f@b.c');
+      when(mockApiService.createUser(request)).thenAnswer((_) async => user);
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      User? observed;
+      final defn = mutation.definition(onSuccess: (User u, CreateUserMutation _) => observed = u);
+      await defn.mutate(mutation);
+
+      expect(observed, user);
+    });
+  });
+
   group('MutationSerializable.mutate convenience getter', () {
     test('serializable.mutate(...) executes the same pipeline as the previous mutationKey.mutate', () async {
       final request = CreateUserRequest(name: 'Bo', email: 'bo@example.com');

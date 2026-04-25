@@ -96,7 +96,7 @@ void main() {
       final getUsersRequest = GetAllUsersQueryRequest(apiService: mockApiService, cache: cachedQuery);
 
       // User query should succeed
-      final userResult = await userQuery.queryKey.query().fetch();
+      final userResult = await userQuery.query().fetch();
       expect(userResult.data?.id, users[0].id);
       expect(userResult.data?.name, users[0].name);
       expect(userResult.data?.email, users[0].email);
@@ -104,7 +104,7 @@ void main() {
       // Users query should fail with network error
       QueryException? usersError;
       try {
-        await getUsersRequest.queryKey.query(onError: (error) => usersError = error).fetch();
+        await getUsersRequest.query(onError: (QueryException error) => usersError = error).fetch();
       } catch (e) {
         // Expected
       }
@@ -222,7 +222,7 @@ void main() {
       when(mockApiService.updateUser(updateRequest)).thenAnswer((_) async => updatedUser);
 
       // Fetch initial data
-      final initialResult = await request.queryKey.query().fetch();
+      final initialResult = await request.query().fetch();
       expect(request.queryKey.exists, true);
       expect(initialResult.data, initialUser);
 
@@ -255,7 +255,7 @@ void main() {
       // Test query error
       QueryException? queryError;
       try {
-        await query.queryKey.query(onError: (error) => queryError = error).fetch();
+        await query.query(onError: (QueryException error) => queryError = error).fetch();
       } catch (e) {
         // Expected
       }

@@ -229,7 +229,7 @@ class UserProfileScreen extends StatelessWidget {
             // Typed Query Builder Example
             Expanded(
               child: TypedQueryBuilder<User>(
-                query: getUserQuery.queryKey.query(),
+                query: getUserQuery.query(),
                 builder: (context, state) {
                   if (state.isLoading) {
                     return Center(child: CircularProgressIndicator());
@@ -271,7 +271,7 @@ class UserProfileScreen extends StatelessWidget {
 
             // Typed Mutation Builder Example
             TypedMutationBuilder<User, UpdateUserRequest>(
-              mutation: updateUserMutation.mutationKey.definition(
+              mutation: updateUserMutation.definition(
                 onSuccess: (user, request) =>
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Successfully updated user: ${user.name}'))),
                 onError: (request, error, fallback) =>
@@ -301,7 +301,7 @@ class UserProfileScreen extends StatelessWidget {
 
             // Typed Query Listener Example (listens for changes without UI)
             TypedQueryListener<User>(
-              query: getUserQuery.queryKey.query(),
+              query: getUserQuery.query(),
               onChange: (context, state) => print('User query state changed'),
               onSuccess: (context, state) => print('User loaded: ${state.data?.name}'),
               onError: (context, state) => print('User query error: ${state.error}'),
@@ -335,12 +335,12 @@ class UsersListScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text('Users List'), backgroundColor: Colors.blue, foregroundColor: Colors.white),
       body: TypedMutationListener<User, UpdateUserRequest>(
-        mutation: refreshMutation.mutationKey.definition(),
+        mutation: refreshMutation.definition(),
         onSuccess: (context, state) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Refresh completed!'))),
         onError: (context, state) =>
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Refresh failed'), backgroundColor: Colors.red)),
         child: TypedInfiniteQueryBuilder<List<User>, int>(
-          query: getUsersPage.infiniteQueryKey.query(),
+          query: getUsersPage.infiniteQuery(),
           builder: (context, state, fetchNextPage, hasReachedMax) {
             if (state.isLoading && (state.data?.pages.isEmpty ?? true)) {
               return Center(child: CircularProgressIndicator());

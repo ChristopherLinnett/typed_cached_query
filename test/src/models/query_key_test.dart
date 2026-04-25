@@ -219,7 +219,7 @@ void main() {
       });
 
       final request = GetUserQuery(userId: 321, apiService: mockApiService, localCache: cachedQuery);
-      final query = request.queryKey.query();
+      final query = request.query();
 
       Object? captured;
       try {
@@ -238,7 +238,7 @@ void main() {
       when(mockApiService.getUser(1)).thenAnswer((_) async => user);
 
       final request = _BadResponseQuery(apiService: mockApiService, localCache: cachedQuery);
-      final query = request.queryKey.query();
+      final query = request.query();
 
       Object? captured;
       try {
@@ -491,6 +491,42 @@ void main() {
       final result = await fetchFunction();
 
       expect(result, null);
+    });
+  });
+
+  group('QuerySerializable.query convenience method', () {
+    test('serializable.query() resolves to the same Query as queryKey.query()', () async {
+      final user = User(id: 1, name: 'Convenience', email: 'c@example.com');
+      when(mockApiService.getUser(1)).thenAnswer((_) async => user);
+
+      final request = GetUserQuery(userId: 1, apiService: mockApiService, localCache: cachedQuery);
+      // No `.queryKey` chain — this is the new public entry point.
+      final result = await request.query().fetch();
+
+      expect(result.data, user);
+      verify(mockApiService.getUser(1)).called(1);
+    });
+
+    test('serializable.query(...) forwards onError', () async {
+      when(mockApiService.getUser(404)).thenThrow(ApiError('User not found', 404));
+
+      final request = GetUserQuery(userId: 404, apiService: mockApiService, localCache: cachedQuery);
+      QueryException? captured;
+      final query = request.query(onError: (error) => captured = error);
+
+      try {
+        await query.fetch();
+      } catch (_) {/* expected */}
+
+      expect(captured, isNotNull);
+      expect(captured!.statusCode, 404);
+    });
+
+    test('serializable.query(config:) forwards QueryConfig (storeQuery validation surfaces)', () {
+      final request = _GetUserQueryNoSerializer(userId: 7, apiService: mockApiService, localCache: cachedQuery);
+      // _GetUserQueryNoSerializer sets storeQuery=true with no serializer; passing a config must surface the same
+      // ArgumentError as queryKey.query(config:) — proves the config arg is forwarded, not dropped.
+      expect(() => request.query(config: QueryConfig()), throwsA(isA<ArgumentError>()));
     });
   });
 }
