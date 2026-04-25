@@ -6,14 +6,14 @@ A type-safe wrapper around [cached_query_flutter](https://pub.dev/packages/cache
 
 > **Posture:** this library is a *typed shim* — it adds compile-time type safety on the input side of every query/mutation but returns underlying `cached_query_flutter` types unchanged. Consumers should still know the relevant parts of `cached_query_flutter`. See [docs/architecture.md](docs/architecture.md) for the full rationale.
 
-This package abstracts away the complexity of cached_query_flutter while providing better type safety, reduced boilerplate, and a more intuitive API for developers.
+It removes the boilerplate of declaring request/response/error types at every call site and gives you typed builders, listeners, and a uniform error contract — without hiding the underlying state, configuration, or lifecycle APIs of `cached_query_flutter`.
 
 ## Features
 
 - **Type-safe queries and mutations**: Define your API calls with full type safety
 - **Automatic caching**: Built-in intelligent caching with configurable policies  
 - **Error handling**: Strongly-typed error handling with custom exception mapping
-- **Clean API**: Simple, intuitive API that hides cached_query_flutter complexity
+- **Less boilerplate**: Typed builders, listeners, and a uniform error contract over `cached_query_flutter`
 - **Testing support**: Easy-to-mock interfaces for unit testing
 - **Flutter integration**: Seamless integration with Flutter lifecycle and connectivity
 
