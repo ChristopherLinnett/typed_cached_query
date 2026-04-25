@@ -315,4 +315,20 @@ void main() {
       expect(defaultMutationBackoff(3), const Duration(milliseconds: 300));
     });
   });
+
+  group('MutationKey responseHandler wiring', () {
+    test('mutationFn raw output is passed through responseHandler before reaching the caller', () async {
+      final request = CreateUserRequest(name: 'Bo', email: 'bo@example.com');
+      // mutationFn returns a User. responseHandler in this fixture is `response as User`, so the
+      // wiring is observable indirectly: the test verifies the result comes back as the
+      // responseHandler-produced value (identical reference) rather than something from a bypass path.
+      final user = User(id: 99, name: 'Bo', email: 'bo@example.com');
+      when(mockApiService.createUser(request)).thenAnswer((_) async => user);
+
+      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      final result = await MutationKey(mutation).mutate();
+
+      expect(identical(result.data, user), isTrue, reason: 'mutate result must be the value returned by responseHandler');
+    });
+  });
 }

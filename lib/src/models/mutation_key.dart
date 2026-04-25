@@ -44,9 +44,10 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
         final maxAttempts = (retryAttempts ?? 0) + 1;
         for (var attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
-            return timeoutSeconds != null
+            final raw = timeoutSeconds != null
                 ? await request.mutationFn().timeout(Duration(seconds: timeoutSeconds))
                 : await request.mutationFn();
+            return request.responseHandler(raw);
           } catch (e) {
             if (e is TimeoutException && capturedOnTimeout != null) rethrow;
             if (e is! ErrorType) {

@@ -220,7 +220,7 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
   /// [errorMapper]. Any other thrown object is treated as an unhandled exception and wrapped in
   /// [MutationException].
   /// **Example:** HTTP POST/PUT/DELETE calls, database writes, file system mutations.
-  Future<ReturnType> mutationFn();
+  Future<dynamic> mutationFn();
 
   /// Custom cache instance for this specific mutation type.
   ///
@@ -317,7 +317,7 @@ abstract class InfiniteQuerySerializable<ReturnType, RequestData, ErrorType> {
   ///   [getNextArg] for the page about to be fetched.
   /// **Returns:** Raw response for one page, passed to [responseHandler].
   /// **Error handling:** Throw errors of type [ErrorType] for proper mapping by [errorMapper].
-  Future<ReturnType> queryFn(RequestData requestData);
+  Future<dynamic> queryFn(RequestData requestData);
 
   /// Determines the argument for the next page based on the current infinite query data.
   ///
