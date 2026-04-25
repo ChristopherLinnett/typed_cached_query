@@ -292,6 +292,46 @@ void main() {
     });
   });
 
+  group('QueryKey error getter', () {
+    test('returns null when state is not in error', () async {
+      final user = User(id: 1, name: 'A', email: 'a@b.c');
+      when(mockApiService.getUser(1)).thenAnswer((_) async => user);
+
+      final request = GetUserQuery(userId: 1, apiService: mockApiService, localCache: cachedQuery);
+      final queryKey = QueryKey(request);
+      await queryKey.query().fetch();
+
+      expect(queryKey.isError, isFalse);
+      expect(queryKey.error, isNull, reason: 'error must mirror isError — never returns a value when isError is false');
+    });
+
+    test('passes through a stored QueryException unchanged', () async {
+      // Trigger an unhandled exception so the underlying state stores a QueryException.
+      when(mockApiService.getUser(2)).thenAnswer((_) async => throw FormatException('boom'));
+
+      final request = GetUserQuery(userId: 2, apiService: mockApiService, localCache: cachedQuery);
+      final queryKey = QueryKey(request);
+      await queryKey.query().fetch();
+
+      expect(queryKey.isError, isTrue);
+      expect(queryKey.error, isA<QueryException>());
+    });
+
+    test('maps a stored ErrorType via errorMapper', () async {
+      when(mockApiService.getUser(3)).thenThrow(ApiError('x', 503));
+
+      final request = GetUserQuery(userId: 3, apiService: mockApiService, localCache: cachedQuery);
+      final queryKey = QueryKey(request);
+      try {
+        await queryKey.query().fetch();
+      } catch (_) {/* expected */}
+
+      expect(queryKey.isError, isTrue);
+      expect(queryKey.error, isA<QueryException>());
+      expect(queryKey.error!.message, contains('API Error: x'));
+    });
+  });
+
   group('QueryKey Data Management', () {
     test('should update data correctly', () async {
       final user = User(id: 123, name: 'John Doe', email: 'john@example.com');

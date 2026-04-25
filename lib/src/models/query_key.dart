@@ -93,6 +93,7 @@ class QueryKey<RequestType extends QuerySerializable<ReturnType, ErrorType>, Ret
   bool get isError => _getQuery != null && _getQuery!.state.isError;
   QueryException? get error {
     if (_getQuery == null) return null;
+    if (!_getQuery!.state.isError) return null;
     final stateError = _getQuery!.state.error;
     if (stateError == null) return null;
     if (stateError is QueryException) return stateError;
