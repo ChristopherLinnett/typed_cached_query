@@ -194,17 +194,41 @@ void main() {
       expect(capturedError!.statusCode, 404);
     });
 
-    test('should throw QueryException for unhandled errors', () async {
+    test('unhandled errors land in state as QueryException (no rethrow to the caller)', () async {
       when(mockApiService.getUser(789)).thenThrow(Exception('Unexpected error'));
 
       final request = GetUserQuery(userId: 789, apiService: mockApiService, localCache: cachedQuery);
       final queryKey = QueryKey(request);
       final query = queryKey.query();
 
-      expect(
-        () => query.fetch(),
-        throwsA(isA<QueryException>().having((e) => e.message, 'message', contains('An unhandled exception has taken place'))),
-      );
+      final result = await query.fetch();
+
+      expect(result.error, isA<QueryException>());
+      expect((result.error as QueryException).message, contains('An unhandled exception has taken place'));
+    });
+
+    test('async queryFn throwing a non-ErrorType lands as QueryException (no TypeError)', () async {
+      // The previous _wrappedQueryFn try/catch only caught synchronous throws of queryFn(); an async
+      // queryFn that threw AFTER an await emitted the original error untouched, and the onError
+      // closure then force-cast it to ErrorType — TypeError, original error swallowed.
+      when(mockApiService.getUser(321)).thenAnswer((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 1));
+        throw FormatException('parse boom');
+      });
+
+      final request = GetUserQuery(userId: 321, apiService: mockApiService, localCache: cachedQuery);
+      final query = request.queryKey.query();
+
+      Object? captured;
+      try {
+        await query.fetch();
+      } catch (e) {
+        captured = e;
+      }
+
+      final stateOrCaught = query.state.error ?? captured;
+      expect(stateOrCaught, isA<QueryException>(),
+          reason: 'async non-ErrorType errors must be wrapped as QueryException, not surface as TypeError or the raw exception');
     });
 
     test('FormatException message names the actual ReturnType (not the literal "Type")', () async {
