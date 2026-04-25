@@ -78,14 +78,13 @@ class QueryKey<RequestType extends QuerySerializable<ReturnType, ErrorType>, Ret
 
   T updateData<T>(T Function(ReturnType? existingData) updateFunction) {
     if (_getQuery == null) {
-      _cache.setQueryData(key: _valueKey, data: updateFunction(null));
-      return updateFunction(null);
+      final initial = updateFunction(null);
+      _cache.setQueryData(key: _valueKey, data: initial);
+      return initial;
     }
-
-    final currentData = _getQuery!.state.data;
-    final newData = updateFunction(currentData);
-    _cache.updateQuery(key: _valueKey, updateFn: (oldData) => updateFunction(oldData as ReturnType?));
-    return newData;
+    final next = updateFunction(_getQuery!.state.data);
+    _cache.updateQuery(key: _valueKey, updateFn: (_) => next);
+    return next;
   }
 
   void invalidate({bool refetchActive = true, bool refetchInactive = false}) {

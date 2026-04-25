@@ -119,15 +119,13 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
   /// Update the infinite query data
   T updateData<T>(T Function(InfiniteQueryData<ReturnType, RequestData>? existingData) updateFunction) {
     if (_getInfiniteQuery == null) {
-      final newData = updateFunction(null);
-      _cache.setQueryData(key: _valueKey, data: newData);
-      return newData;
+      final initial = updateFunction(null);
+      _cache.setQueryData(key: _valueKey, data: initial);
+      return initial;
     }
-
-    final currentData = _getInfiniteQuery!.state.data;
-    final newData = updateFunction(currentData);
-    _cache.updateQuery(key: _valueKey, updateFn: (oldData) => updateFunction(oldData as InfiniteQueryData<ReturnType, RequestData>?));
-    return newData;
+    final next = updateFunction(_getInfiniteQuery!.state.data);
+    _cache.updateQuery(key: _valueKey, updateFn: (_) => next);
+    return next;
   }
 
   /// Invalidate the infinite query

@@ -351,6 +351,29 @@ void main() {
       expect(result.pages.first.users.first.name, 'Updated John');
     });
 
+    test('updateData invokes the user function exactly once (existing data path)', () async {
+      final pageResponse = PagedResponse(
+        users: [User(id: 1, name: 'John', email: 'john@example.com')],
+        page: 1,
+        totalPages: 1,
+        hasNext: false,
+      );
+      when(mockApiService.getUsersPage(PageArgs(page: 1, limit: 10))).thenAnswer((_) async => pageResponse);
+
+      final request = GetUsersInfiniteQuery(apiService: mockApiService, localCache: cachedQuery);
+      final infiniteQueryKey = InfiniteQueryKey(request);
+      await infiniteQueryKey.query().fetch();
+
+      var calls = 0;
+      final replacement = InfiniteQueryData<PagedResponse, PageArgs>(pages: [pageResponse], args: [PageArgs(page: 1, limit: 10)]);
+      infiniteQueryKey.updateData<InfiniteQueryData<PagedResponse, PageArgs>>((existingData) {
+        calls += 1;
+        return replacement;
+      });
+
+      expect(calls, 1, reason: 'updateFunction must be invoked exactly once per updateData call');
+    });
+
     test('should invalidate query correctly', () async {
       final pageResponse = PagedResponse(
         users: [User(id: 1, name: 'John', email: 'john@example.com')],
