@@ -405,17 +405,43 @@ void main() {
 
   group('MutationKey responseHandler wiring', () {
     test('mutationFn raw output is passed through responseHandler before reaching the caller', () async {
-      final request = CreateUserRequest(name: 'Bo', email: 'bo@example.com');
-      // mutationFn returns a User. responseHandler in this fixture is `response as User`, so the
-      // wiring is observable indirectly: the test verifies the result comes back as the
-      // responseHandler-produced value (identical reference) rather than something from a bypass path.
-      final user = User(id: 99, name: 'Bo', email: 'bo@example.com');
-      when(mockApiService.createUser(request)).thenAnswer((_) async => user);
-
-      final mutation = CreateUserMutation(request: request, apiService: mockApiService, cache: mutationCache);
+      // Use a fixture whose mutationFn returns a raw Map and whose responseHandler reconstructs
+      // a User with a sentinel suffix. If responseHandler were bypassed, result.data would be the
+      // raw Map (not a User) and the assertions would fail.
+      final mutation = _MapMutation(returnRaw: {'id': 7, 'name': 'Raw', 'email': 'raw@example.com'}, cache: mutationCache);
       final result = await MutationKey(mutation).mutate();
 
-      expect(identical(result.data, user), isTrue, reason: 'mutate result must be the value returned by responseHandler');
+      expect(result.data, isA<User>(), reason: 'mutate result must be the User produced by responseHandler, not the raw Map from mutationFn');
+      expect(result.data!.name, endsWith('-via-responseHandler'), reason: 'sentinel suffix proves responseHandler ran');
     });
   });
+}
+
+/// Fixture for the responseHandler-wiring test: raw mutationFn returns a Map and responseHandler
+/// reconstructs a User with a sentinel suffix so the wiring is *observable* — bypassing
+/// responseHandler would leave result.data as the raw Map.
+class _MapMutation extends MutationSerializable<_MapMutation, User, ValidationError> {
+  final Map<String, dynamic> returnRaw;
+  final MutationCache? _cache;
+
+  _MapMutation({required this.returnRaw, MutationCache? cache}) : _cache = cache;
+
+  @override
+  String get keyGenerator => 'map_mutation';
+
+  @override
+  OnErrorResults<_MapMutation, User?> errorMapper(_MapMutation request, ValidationError error, User? fallback) =>
+      OnErrorResults(request: request, error: MutationException(error.message, 400), fallback: fallback);
+
+  @override
+  User responseHandler(dynamic response) {
+    final map = response as Map<String, dynamic>;
+    return User(id: map['id'] as int, name: '${map['name']}-via-responseHandler', email: map['email'] as String);
+  }
+
+  @override
+  Future<dynamic> mutationFn() async => returnRaw;
+
+  @override
+  MutationCache? get cache => _cache;
 }
