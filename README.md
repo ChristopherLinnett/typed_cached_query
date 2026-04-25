@@ -1,5 +1,7 @@
 # Typed Cached Query
 
+[![CI](https://github.com/ChristopherLinnett/typed_cached_query/actions/workflows/ci.yml/badge.svg)](https://github.com/ChristopherLinnett/typed_cached_query/actions/workflows/ci.yml)
+
 A type-safe wrapper around [cached_query_flutter](https://pub.dev/packages/cached_query_flutter) that provides a clean, strongly-typed API for managing queries and mutations in Flutter applications.
 
 This package abstracts away the complexity of cached_query_flutter while providing better type safety, reduced boilerplate, and a more intuitive API for developers.
@@ -206,3 +208,23 @@ void main() {
 This package is a wrapper around [cached_query_flutter](https://pub.dev/packages/cached_query_flutter) and provides a more developer-friendly API while maintaining all the powerful caching and state management features of the underlying library.
 
 For more examples, see the `/example` folder in the repository.
+
+## Development
+
+Local setup for contributors:
+
+```bash
+# Resolve dependencies (use dart pub get rather than flutter pub get)
+dart pub get
+
+# (Re)generate mockito mocks if you change @GenerateMocks declarations
+dart run build_runner build --delete-conflicting-outputs
+
+# Run static analysis on lib/
+dart analyze --fatal-infos lib/
+
+# Run the full test suite
+flutter test
+```
+
+CI runs the same `dart pub get` → `dart analyze --fatal-infos lib/` → `flutter test` pipeline on every push and pull request.
