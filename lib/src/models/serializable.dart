@@ -188,20 +188,53 @@ abstract class QuerySerializable<ReturnType, ErrorType> {
 /// - [ReturnType]: The expected return type from successful mutations
 /// - [ErrorType]: Your custom error type that will be mapped to [MutationException]
 abstract class MutationSerializable<RequestType extends MutationSerializable<RequestType, ReturnType, ErrorType>, ReturnType, ErrorType> {
-  /// Generates a unique key for this mutation type, used for caching and identifying the mutation
+  /// Generates a unique key for this mutation type, used for caching and identifying the mutation.
+  ///
+  /// **Purpose:** Distinct mutations should produce distinct keys so the underlying [MutationCache]
+  /// can track in-flight state, deduplicate concurrent submissions, and dispatch optimistic updates.
+  /// **Returns:** A stable, unique string per mutation type. Override per request only when the
+  /// mutation is parameterised by data that should partition cache state (e.g. user id).
+  /// **Example:** `String keyGenerator() => 'create_user';`
   String keyGenerator();
 
-  /// Accepts the request, error, and fallback value, then maps them to an [OnErrorResults] containing the mapped error and fallback handling
+  /// Maps a domain-specific [ErrorType] into a typed [OnErrorResults] for the mutation pipeline.
+  ///
+  /// **Purpose:** Converts your custom error type into the standard [MutationException] format and
+  /// optionally carries a [fallback] value used for optimistic-update rollback.
+  /// **Parameters:**
+  /// - [request]: The mutation request that produced the error.
+  /// - [error]: The original error of type [ErrorType] from your API/service.
+  /// - [fallback]: Optional fallback value (e.g. previous state) for the mutation pipeline.
+  /// **Returns:** An [OnErrorResults] wrapping the mapped exception and fallback.
+  /// **Example:** map HTTP status codes, validation errors, or network exceptions into [MutationException].
   OnErrorResults<RequestType, ReturnType?> errorMapper(RequestType request, ErrorType error, ReturnType? fallback);
 
-  /// Accepts a dynamic response and maps it to the expected [ReturnType]
+  /// Transforms the raw mutation response into the expected [ReturnType].
+  ///
+  /// **Purpose:** Handles JSON parsing, data transformation, and type conversion of the value
+  /// returned by [mutationFn] before it reaches [onSuccess] callbacks.
+  /// **Parameters:**
+  /// - [response]: Raw response from the API (typically JSON, but can be any type).
+  /// **Returns:** Parsed and validated data of type [ReturnType].
+  /// **Example:** `User responseHandler(dynamic response) => User.fromJson(response);`
   ReturnType responseHandler(dynamic response);
 
-  /// The core function that performs the mutation and returns a [Future] of [ReturnType]
-  /// Make sure if an error is thrown it conforms to [ErrorType] for consistent error handling
+  /// The core function that performs the mutation and returns a [Future] of [ReturnType].
+  ///
+  /// **Purpose:** Contains your business logic for performing the mutation (HTTP requests,
+  /// database writes, etc.).
+  /// **Returns:** Raw response that will be passed to [responseHandler].
+  /// **Error handling:** Should throw errors of type [ErrorType] for proper error mapping by
+  /// [errorMapper]. Any other thrown object is treated as an unhandled exception and wrapped in
+  /// [MutationException].
+  /// **Example:** HTTP POST/PUT/DELETE calls, database writes, file system mutations.
   Future<ReturnType> mutationFn();
 
-  /// Optional cache instance to use for this mutation, if none is provided. Will use the global cache
+  /// Custom cache instance for this specific mutation type.
+  ///
+  /// **Purpose:** Allows isolated cache configuration per mutation type.
+  /// **Default:** `null` (uses [MutationCache.instance] global cache).
+  /// **Override when:** You need isolated caching, custom cache policies, or testing scenarios.
   MutationCache? get cache => null;
 }
 
@@ -255,17 +288,43 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
 /// - [RequestData]: The type of data needed to request the next page (page number, cursor, etc.)
 /// - [ErrorType]: Your custom error type that will be mapped to [QueryException]
 abstract class InfiniteQuerySerializable<ReturnType, RequestData, ErrorType> {
-  /// Generates a unique key for this infinite query type, used for caching and identifying the query
+  /// Generates a unique key for this infinite query type, used for caching and identifying the query.
+  ///
+  /// **Purpose:** Distinct infinite queries should produce distinct keys so the underlying cache
+  /// can track all loaded pages and dispatch updates correctly.
+  /// **Returns:** A stable, unique string per infinite query type. Override per parameterised
+  /// query so different page sizes, filters, or sort orders are cached separately.
+  /// **Example:** `String keyGenerator() => 'users_infinite_${pageSize}_$sortBy';`
   String keyGenerator();
 
-  /// Accepts an error of type [ErrorType] and maps it to a [QueryException] for consistent error handling
+  /// Maps a domain-specific [ErrorType] into a [QueryException] for consistent error handling.
+  ///
+  /// **Purpose:** Converts your custom error type into the standard [QueryException] format used
+  /// by the typed wrapper's `onError` plumbing.
+  /// **Parameters:**
+  /// - [error]: The original error of type [ErrorType] from your API/service.
+  /// **Returns:** A [QueryException] with appropriate error message and status code.
+  /// **Example:** map HTTP status codes, validation errors, or pagination errors.
   QueryException errorMapper(ErrorType error);
 
-  /// Accepts a dynamic response and maps it to the expected [ReturnType]
+  /// Transforms the raw API response for a single page into the expected [ReturnType].
+  ///
+  /// **Purpose:** Handles JSON parsing, data transformation, and type conversion of each page.
+  /// **Parameters:**
+  /// - [response]: Raw response from the API (typically JSON, but can be any type).
+  /// **Returns:** Parsed and validated data of type [ReturnType] representing one page.
+  /// **Example:** `PagedResponse responseHandler(dynamic response) => PagedResponse.fromJson(response);`
   ReturnType responseHandler(dynamic response);
 
-  /// The core function that performs the query for a specific page/chunk and returns a [Future] of [ReturnType]
-  /// Takes [RequestData] (typically page number, offset, or cursor) to determine what data to fetch
+  /// The core function that fetches a single page/chunk and returns a [Future] of [ReturnType].
+  ///
+  /// **Purpose:** Contains your business logic for fetching a specific page given the page-pointer
+  /// produced by [getNextArg].
+  /// **Parameters:**
+  /// - [requestData]: The page-pointer (typically page number, offset, or cursor) returned by
+  ///   [getNextArg] for the page about to be fetched.
+  /// **Returns:** Raw response for one page, passed to [responseHandler].
+  /// **Error handling:** Throw errors of type [ErrorType] for proper mapping by [errorMapper].
   Future<ReturnType> queryFn(RequestData requestData);
 
   /// Determines the argument for the next page based on the current infinite query data.
@@ -279,17 +338,37 @@ abstract class InfiniteQuerySerializable<ReturnType, RequestData, ErrorType> {
   /// a generic [QueryException] before being delivered to the user-supplied `onError` callback.
   RequestData? getNextArg(InfiniteQueryData<ReturnType, RequestData>? data);
 
-  /// Used for persisting the infinite query data to storage, should convert [InfiniteQueryData] to a [Map<String, dynamic>]
+  /// Function to serialize the full [InfiniteQueryData] (all loaded pages + their args) for persistent storage.
+  ///
+  /// **Purpose:** Converts the complete pagination state into a storage-compatible map so the
+  /// already-loaded pages can survive app restarts.
+  /// **Default:** `null` (no storage serialization).
+  /// **Override when:** [storeQuery] is true and you want pagination state to persist.
+  /// **Requirements:** Must round-trip with [storageDeserializer].
   Map<String, dynamic> Function(InfiniteQueryData<ReturnType, RequestData>)? get storageSerializer => null;
 
-  /// Used for retrieving the infinite query data from storage, should convert a [Map<String, dynamic>] back to [InfiniteQueryData]
+  /// Function to deserialize stored pagination state into [InfiniteQueryData].
+  ///
+  /// **Purpose:** Reconstructs all previously loaded pages and their request args from disk.
+  /// **Default:** `null` (no storage deserialization).
+  /// **Override when:** Using [storageSerializer] with [storeQuery] set to true.
+  /// **Requirements:** Must reconstruct the data produced by [storageSerializer].
   InfiniteQueryData<ReturnType, RequestData> Function(Map<String, dynamic>)? get storageDeserializer => null;
 
-  /// Whether to store the query result in persistent storage
-  /// Make sure that your storage interface has been connected and initialised before overriding this to true.
+  /// Controls whether infinite query pages should be persisted to disk storage.
+  ///
+  /// **Purpose:** Enables offline access and faster app startup with previously loaded pages.
+  /// **Default:** `false` (in-memory caching only).
+  /// **Override to `true` when:** You want the infinite query state to survive app restarts.
+  /// **Requirements:** Both [storageSerializer] and [storageDeserializer] must be provided, and the
+  /// storage interface must be initialised via [TypedCachedQuery.configureFlutter].
   bool get storeQuery => false;
 
-  /// Optional cache instance to use for this query, if none is provided. Will use the global cache
+  /// Custom cache instance for this specific infinite query type.
+  ///
+  /// **Purpose:** Allows isolated cache configuration per query type.
+  /// **Default:** `null` (uses [CachedQuery.instance] global cache).
+  /// **Override when:** You need isolated caching, custom cache policies, or testing scenarios.
   CachedQuery? get cache => null;
 }
 
