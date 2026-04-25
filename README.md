@@ -4,6 +4,8 @@
 
 A type-safe wrapper around [cached_query_flutter](https://pub.dev/packages/cached_query_flutter) that provides a clean, strongly-typed API for managing queries and mutations in Flutter applications.
 
+> **Posture:** this library is a *typed shim* — it adds compile-time type safety on the input side of every query/mutation but returns underlying `cached_query_flutter` types unchanged. Consumers should still know the relevant parts of `cached_query_flutter`. See [docs/architecture.md](docs/architecture.md) for the full rationale.
+
 This package abstracts away the complexity of cached_query_flutter while providing better type safety, reduced boilerplate, and a more intuitive API for developers.
 
 ## Features
