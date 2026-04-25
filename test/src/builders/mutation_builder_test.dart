@@ -63,9 +63,15 @@ void main() {
     await m2.mutate(9);
     await tester.pumpAndSettle();
     expect(find.text('2-9'), findsOneWidget);
+
+    // Drive the OLD mutation after the swap and assert the UI does not react.
+    await m1.mutate(7);
+    await tester.pumpAndSettle();
+    expect(find.text('2-9'), findsOneWidget);
+    expect(find.text('1-7'), findsNothing);
   });
 
-  testWidgets('dispose cancels the subscription so post-dispose events do not throw', (tester) async {
+  testWidgets('dispose-time mounted guard suppresses post-dispose setState', (tester) async {
     final mutation = _makeMutation(cache, 'm-dispose', (i) async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return 'late-$i';

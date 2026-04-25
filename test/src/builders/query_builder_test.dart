@@ -62,9 +62,20 @@ void main() {
     await tester.pumpWidget(under(queryB));
     await tester.pumpAndSettle();
     expect(find.text('B'), findsOneWidget);
+
+    // Drive a state change on the OLD query and assert the UI does not react — proves the
+    // old subscription is gone, not just that the new query happens to render the same value.
+    queryA.update((_) => 'A-updated');
+    await tester.pumpAndSettle();
+    expect(find.text('B'), findsOneWidget);
+    expect(find.text('A-updated'), findsNothing);
   });
 
-  testWidgets('dispose cancels the subscription so post-dispose stream events do not throw', (tester) async {
+  testWidgets('dispose-time mounted guard suppresses post-dispose setState', (tester) async {
+    // The widget guards setState with `if (mounted)`, so this test exercises the mounted-guard
+    // path — it does not (and cannot from outside the widget) directly observe StreamSubscription
+    // cancellation. A leaked subscription would be silent here; what we are protecting against is
+    // a thrown exception from setState-after-dispose.
     final query = _makeQuery(cache, 'q-dispose', () async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return 'late';
@@ -78,9 +89,7 @@ void main() {
         ),
       ),
     );
-    // Replace with an empty widget — disposes the State.
     await tester.pumpWidget(_harness(const SizedBox.shrink()));
-    // Allow the queryFn future to complete; if dispose forgot to cancel, the late setState would throw.
     await tester.pumpAndSettle();
   });
 }

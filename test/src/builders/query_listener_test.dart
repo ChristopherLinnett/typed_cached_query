@@ -171,9 +171,14 @@ void main() {
 
     expect(changesA, changesABeforeSwap, reason: 'after swap, the old subscription must not deliver events');
     expect(changesB, greaterThanOrEqualTo(1));
+
+    // Drive the OLD query and assert the old onChange remains silent.
+    qa.update((_) => 'a-updated');
+    await tester.pumpAndSettle();
+    expect(changesA, changesABeforeSwap);
   });
 
-  testWidgets('dispose cancels the subscription', (tester) async {
+  testWidgets('dispose-time mounted guard suppresses post-dispose setState', (tester) async {
     final query = _makeQuery(cache, 'ql-dispose', () async {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return 'late';
