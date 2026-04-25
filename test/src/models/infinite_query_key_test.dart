@@ -419,8 +419,9 @@ void main() {
       expect(query.state, isA<InfiniteQueryError<PagedResponse, PageArgs>>(), reason: 'state must be InfiniteQueryError, not InfiniteQuerySuccess(hasReachedMax: true)');
       // Assert the wrapper contract (errorMapper-translated QueryException) rather than the raw
       // cached_query state.error storage shape — that decouples the test from upstream storage choices.
-      expect(infiniteQueryKey.error, isA<QueryException>(), reason: 'ErrorType throws are exposed via the wrapper as QueryException');
-      expect(infiniteQueryKey.error!.message, contains('boom'), reason: 'wrapper must map ErrorType through errorMapper');
+      final err = infiniteQueryKey.error;
+      expect(err, isA<QueryException>(), reason: 'ErrorType throws are exposed via the wrapper as QueryException');
+      expect(err!.message, contains('boom'), reason: 'wrapper must map ErrorType through errorMapper');
     });
 
     test('getNextArg throw of unknown error surfaces an error state', () async {
@@ -436,8 +437,9 @@ void main() {
       expect(infiniteQueryKey.isError, isTrue);
       expect(query.state, isA<InfiniteQueryError<PagedResponse, PageArgs>>());
       // Assert via the wrapper contract — the public surface that consumers actually read.
-      expect(infiniteQueryKey.error, isA<QueryException>(), reason: 'unknown-type errors are exposed via the wrapper as QueryException');
-      expect(infiniteQueryKey.error!.message, contains('getNextArg'));
+      final err = infiniteQueryKey.error;
+      expect(err, isA<QueryException>(), reason: 'unknown-type errors are exposed via the wrapper as QueryException');
+      expect(err!.message, contains('getNextArg'));
     });
 
     test('error getter does not throw when state.error is a QueryException (unknown-type path)', () async {
