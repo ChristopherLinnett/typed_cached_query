@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking)
+- `MutationSerializable.mutationFn()` and `InfiniteQuerySerializable.queryFn(arg)` now return `Future<dynamic>` (matching `QuerySerializable.queryFn()`) and their result is passed through `responseHandler` before reaching the caller. Existing implementations whose return type was `Future<ReturnType>` continue to compile (Future<X> assigns to Future<dynamic>) and continue to work as long as their `responseHandler` accepts a `ReturnType` value (which all in-tree fixtures do).
+
 ### Fixed
 - `QueryKey.query()` now names the actual `ReturnType` in the `FormatException` message instead of the literal "Type".
 

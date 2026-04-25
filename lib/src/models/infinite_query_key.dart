@@ -27,18 +27,21 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
 
     return InfiniteQuery<ReturnType, RequestData>(
       key: _valueKey,
-      queryFn: (RequestData arg) {
+      queryFn: (RequestData arg) async {
+        dynamic raw;
         try {
-          return request.queryFn(arg);
+          raw = await request.queryFn(arg);
         } catch (e) {
           if (e is ErrorType) rethrow;
-
-          /// Will always be caught by the onError handler in the query and stop execution.
-          /// Recommend to always finish the query function by throwing any unpredicted errors as [ErrorType].
           throw QueryException(
             'An unhandled exception has taken place, please update your definitions to include this error, error: ${e.toString()}',
             500,
           );
+        }
+        try {
+          return request.responseHandler(raw);
+        } catch (e) {
+          throw QueryException('parsing the response of type ${raw.runtimeType} to $ReturnType failed: ${e.toString()}', 400);
         }
       },
       getNextArg: (InfiniteQueryData<ReturnType, RequestData>? data) {
