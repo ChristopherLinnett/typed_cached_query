@@ -203,9 +203,6 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
 
   /// Optional cache instance to use for this mutation, if none is provided. Will use the global cache
   MutationCache? get cache => null;
-
-  /// Convenience getter that returns a [MutationKey] for this mutation request
-  MutationKey<RequestType, ReturnType, ErrorType> get mutationKey => MutationKey(this as RequestType);
 }
 
 /// Base class for creating type-safe infinite/paginated query requests.
@@ -298,6 +295,10 @@ abstract class InfiniteQuerySerializable<ReturnType, RequestData, ErrorType> {
 
 extension QuerySerializableExtension<T extends QuerySerializable<ReturnType, ErrorType>, ReturnType, ErrorType> on T {
   QueryKey<T, ReturnType, ErrorType> get queryKey => QueryKey(this);
+}
+
+extension MutationSerializableExtension<T extends MutationSerializable<T, ReturnType, ErrorType>, ReturnType, ErrorType> on T {
+  MutationKey<T, ReturnType, ErrorType> get mutationKey => MutationKey(this);
 }
 
 extension InfiniteQuerySerializableExtension<
