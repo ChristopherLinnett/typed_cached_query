@@ -6,7 +6,7 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
   final RequestType request;
   InfiniteQueryKey(this.request);
 
-  String get _valueKey => request.keyGenerator();
+  String get _valueKey => request.keyGenerator;
   String get rawKey => _valueKey;
   CachedQuery get _cache => request.cache ?? CachedQuery.instance;
 

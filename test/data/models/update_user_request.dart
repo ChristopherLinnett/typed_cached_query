@@ -18,7 +18,7 @@ class UpdateUserRequest extends MutationSerializable<UpdateUserRequest, User, Ap
   MutationCache? get cache => _cache;
 
   @override
-  String keyGenerator() => 'update_user_$id';
+  String get keyGenerator => 'update_user_$id';
 
   @override
   OnErrorResults<UpdateUserRequest, User?> errorMapper(UpdateUserRequest request, ApiError error, User? fallback) {

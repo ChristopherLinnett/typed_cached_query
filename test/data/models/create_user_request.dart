@@ -17,7 +17,7 @@ class CreateUserRequest extends MutationSerializable<CreateUserRequest, User, Va
   MutationCache? get cache => _cache;
 
   @override
-  String keyGenerator() => 'create_user_${name}_${DateTime.now().millisecondsSinceEpoch}';
+  String get keyGenerator => 'create_user_${name}_${DateTime.now().millisecondsSinceEpoch}';
 
   @override
   OnErrorResults<CreateUserRequest, User?> errorMapper(CreateUserRequest request, ValidationError error, User? fallback) {

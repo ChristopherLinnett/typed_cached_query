@@ -137,7 +137,7 @@ class UpdateUserRequest extends MutationSerializable<UpdateUserRequest, User, Ap
   UpdateUserRequest({required this.name, required this.email, required this.apiService});
 
   @override
-  String keyGenerator() => 'update_user';
+  String get keyGenerator => 'update_user';
 
   @override
   OnErrorResults<UpdateUserRequest, User?> errorMapper(UpdateUserRequest request, ApiError error, User? fallback) {
@@ -162,7 +162,7 @@ class GetUsersPageRequest extends InfiniteQuerySerializable<List<User>, int, Api
   GetUsersPageRequest({required this.apiService});
 
   @override
-  String keyGenerator() => 'users_page';
+  String get keyGenerator => 'users_page';
 
   @override
   QueryException errorMapper(ApiError error) => QueryException('Failed to get users: ${error.message}', error.statusCode);
