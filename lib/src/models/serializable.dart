@@ -211,7 +211,8 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
   /// **Example:** `User responseHandler(dynamic response) => User.fromJson(response);`
   ReturnType responseHandler(dynamic response);
 
-  /// The core function that performs the mutation and returns a [Future] of [ReturnType].
+  /// The core function that performs the mutation. Returns a [Future] whose raw result is then
+  /// passed through [responseHandler] to produce the typed [ReturnType].
   ///
   /// **Purpose:** Contains your business logic for performing the mutation (HTTP requests,
   /// database writes, etc.).
@@ -308,7 +309,8 @@ abstract class InfiniteQuerySerializable<ReturnType, RequestData, ErrorType> {
   /// **Example:** `PagedResponse responseHandler(dynamic response) => PagedResponse.fromJson(response);`
   ReturnType responseHandler(dynamic response);
 
-  /// The core function that fetches a single page/chunk and returns a [Future] of [ReturnType].
+  /// The core function that fetches a single page/chunk. Returns a [Future] whose raw result is
+  /// then passed through [responseHandler] to produce the typed [ReturnType].
   ///
   /// **Purpose:** Contains your business logic for fetching a specific page given the page-pointer
   /// produced by [getNextArg].
