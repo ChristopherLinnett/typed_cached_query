@@ -275,6 +275,20 @@ void main() {
       expect(result.error, error);
       expect(result.fallback, null);
     });
+
+    test('OnErrorResults exposes final fields (read-only after construction)', () {
+      final request = CreateUserRequest(name: 'A', email: 'a@b.c');
+      final mutationSerializable = TestMutationSerializable(request: request);
+      final error = MutationException('e', 500);
+      final fallback = User(id: 1, name: 'F', email: 'f@b.c');
+
+      final result = OnErrorResults(request: mutationSerializable, error: error, fallback: fallback);
+
+      // Identity holds — fields are not copied or replaced after construction.
+      expect(identical(result.request, mutationSerializable), isTrue);
+      expect(identical(result.error, error), isTrue);
+      expect(identical(result.fallback, fallback), isTrue);
+    });
   });
 
   group('Serializable Integration Tests', () {

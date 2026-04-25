@@ -304,8 +304,8 @@ extension InfiniteQuerySerializableExtension<
 }
 
 class OnErrorResults<RequestType, ReturnType> {
-  RequestType request;
-  MutationException error;
-  ReturnType? fallback;
-  OnErrorResults({required this.request, required this.error, this.fallback});
+  final RequestType request;
+  final MutationException error;
+  final ReturnType? fallback;
+  const OnErrorResults({required this.request, required this.error, this.fallback});
 }
