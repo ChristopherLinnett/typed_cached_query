@@ -4,6 +4,11 @@ include: package:flutter_lints/flutter.yaml
 # https://dart.dev/guides/language/analysis-options
 
 analyzer:
+  # Fixtures under test/fixtures/ are intentionally broken — they're regression inputs for tests
+  # that shell out to `dart analyze <fixture>` to assert specific diagnostics. Exclude them from
+  # project-wide analysis so IDEs and bare `dart analyze` don't surface them as errors.
+  exclude:
+    - test/fixtures/**
   language:
     strict-casts: true
     strict-inference: true
