@@ -12,6 +12,15 @@ Query<String> _makeQuery(CachedQuery cache, String key, Future<String> Function(
   );
 }
 
+Query<String?> _makeNullableQuery(CachedQuery cache, String key, Future<String?> Function() queryFn) {
+  return Query<String?>(
+    cache: cache,
+    key: key,
+    queryFn: queryFn,
+    config: const QueryConfig(staleDuration: Duration.zero, ignoreCacheDuration: true),
+  );
+}
+
 Widget _harness(Widget child) => Directionality(textDirection: TextDirection.ltr, child: child);
 
 void main() {
@@ -103,6 +112,38 @@ void main() {
 
     expect(refetchings, greaterThanOrEqualTo(1), reason: 'a refetch with data present must fire onRefetching');
     expect(loadings, loadingsBeforeRefetch, reason: 'onLoading must not fire on a refetch when data is already present');
+  });
+
+  testWidgets('onRefetching fires when refetching a query whose previous success had null data', (tester) async {
+    // Regression for the predicate that used `previous.data != null` only — a successful query
+    // with a nullable return type that completed with null was being misclassified as a cold start.
+    final query = _makeNullableQuery(cache, 'ql-refetch-null', () async => null);
+
+    var loadings = 0;
+    var refetchings = 0;
+
+    await tester.pumpWidget(
+      _harness(
+        TypedQueryListener<String?>(
+          query: query,
+          onLoading: (_, _) => loadings += 1,
+          onRefetching: (_, _) => refetchings += 1,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final loadingsAfterColdStart = loadings;
+    final refetchingsAfterColdStart = refetchings;
+    expect(loadingsAfterColdStart, greaterThanOrEqualTo(1), reason: 'cold-start fetch must fire onLoading even when data resolves to null');
+    expect(refetchingsAfterColdStart, 0, reason: 'cold start cannot be a refetch');
+
+    // Refetch — previous state was Success(data: null). The predicate should still classify this as a refetch.
+    await query.refetch();
+    await tester.pumpAndSettle();
+
+    expect(refetchings, greaterThan(refetchingsAfterColdStart), reason: 'refetching from a successful-null state must fire onRefetching');
+    expect(loadings, loadingsAfterColdStart, reason: 'onLoading must not fire on a refetch even when previous data was null');
   });
 
   testWidgets('didUpdateWidget swaps subscription', (tester) async {
