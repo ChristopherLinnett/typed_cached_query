@@ -16,7 +16,10 @@ analyzer:
 
 linter:
   rules:
-    # You can add any additional lint rules here if needed
+    # Dart 3.7+ treats `_, _` (or more) as deliberately discarded multi-parameter wildcards —
+    # that's the intended pattern in this repo's listener and callback signatures. The
+    # `unnecessary_underscores` lint flags this idiom as if it were `__`. Disable it.
+    unnecessary_underscores: false
 
 # Add this section for formatter configuration
 formatter:

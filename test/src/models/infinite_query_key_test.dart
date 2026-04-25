@@ -327,7 +327,7 @@ void main() {
       );
 
       when(mockApiService.getUsersPage(any)).thenAnswer((_) async {
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future<void>.delayed(Duration(milliseconds: 100));
         return pageResponse;
       });
 

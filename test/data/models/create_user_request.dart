@@ -35,7 +35,6 @@ class CreateUserRequest extends MutationSerializable<CreateUserRequest, User, Va
     return apiService.createUser(this);
   }
 
-  @override
   Map<String, dynamic> toJson() {
     return {'name': name, 'email': email};
   }
