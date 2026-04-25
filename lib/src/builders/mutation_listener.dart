@@ -70,11 +70,14 @@ class _TypedMutationListenerState<T, R> extends State<TypedMutationListener<T, R
   void _handleStateChange(MutationState<T> previous, MutationState<T> current) {
     widget.onData?.call(context, current);
 
-    if (current.isError && widget.onError != null) {
+    // Transition-only semantics: only fire on the leading edge of a state change.
+    // Without these guards, every stream emission while state remains in a bucket would re-fire
+    // the corresponding callback (e.g. a BehaviorSubject replay on subscribe).
+    if (!previous.isError && current.isError && widget.onError != null) {
       widget.onError!(context, current);
-    } else if (current.isSuccess && widget.onSuccess != null) {
+    } else if (!previous.isSuccess && current.isSuccess && widget.onSuccess != null) {
       widget.onSuccess!(context, current);
-    } else if (current.isLoading && widget.onLoading != null) {
+    } else if (!previous.isLoading && current.isLoading && widget.onLoading != null) {
       widget.onLoading!(context, current);
     }
   }
