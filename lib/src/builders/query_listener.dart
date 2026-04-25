@@ -3,27 +3,52 @@ import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:typed_cached_query/src/builders/stream_backed_state.dart';
 
 /// A [TypedQueryListener] widget that listens to query state changes and calls callbacks.
-/// This listener only accepts queries created from [QueryKey.query()].
+///
+/// The [query] is normally produced by calling `request.query(...)` on a [QuerySerializable]
+/// (e.g. `getUserQuery.query()`). The `*Key.query(...)` form is still accepted — it's the same
+/// call under the hood.
+///
+/// ## Choosing between the listener callbacks and the data-pipeline callbacks
+///
+/// `request.query(onSuccess: ..., onError: ...)` and the listener's [onSuccess] / [onError] /
+/// [onLoading] / [onRefetching] / [onChange] callbacks fire at *different layers* — they are
+/// not duplicates:
+///
+/// - **`Query.onSuccess` / `Query.onError`** (passed via `request.query(...)`) — data-pipeline
+///   hooks owned by `cached_query`. Signature `(T data)` / `(dynamic error)`. No
+///   [BuildContext]. Use for analytics, persistence, side effects that don't touch the widget
+///   tree. Fires once per cached_query lifecycle event regardless of whether any widget is
+///   listening.
+/// - **`TypedQueryListener.onSuccess` / `onError` / etc.** — widget-tree hooks owned by this
+///   listener. Signature `(BuildContext context, QueryStatus<T> state)`. Use for
+///   [Navigator.push], `ScaffoldMessenger.showSnackBar`, focus changes — anything that needs a
+///   context or only matters while this listener is mounted.
+///
+/// In short: data-pipeline → no context → use `request.query(...)`; widget reaction → needs
+/// context → use the listener callback.
 class TypedQueryListener<T> extends StatefulWidget {
-  /// The query to listen to. Must be created using [QueryKey.query()].
+  /// The query to listen to. Typically built via `request.query(...)`.
   final Query<T> query;
 
   /// The child widget to render.
   final Widget child;
 
-  /// Called when the query state changes.
+  /// Widget-tree hook called when the query state changes. Receives [BuildContext] for
+  /// navigation / messenger / focus side effects. See class dartdoc for the contrast with
+  /// `Query.onSuccess` / `Query.onError` (data-pipeline hooks without context).
   final void Function(BuildContext context, QueryStatus<T> state)? onChange;
 
-  /// Called when the query encounters an error.
+  /// Widget-tree hook called when the query transitions into an error state.
   final void Function(BuildContext context, QueryStatus<T> state)? onError;
 
-  /// Called when the query loads successfully.
+  /// Widget-tree hook called when the query transitions into a success state.
   final void Function(BuildContext context, QueryStatus<T> state)? onSuccess;
 
-  /// Called when the query starts loading from a non-loading, no-data state (cold start).
+  /// Widget-tree hook called when the query starts loading from a no-data state (cold start).
   final void Function(BuildContext context, QueryStatus<T> state)? onLoading;
 
-  /// Called when the query starts a refetch — i.e. transitions into loading while data is already present.
+  /// Widget-tree hook called when the query starts a refetch — i.e. transitions into loading
+  /// while data is already present.
   final void Function(BuildContext context, QueryStatus<T> state)? onRefetching;
 
   /// Creates a [TypedQueryListener].

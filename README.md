@@ -172,7 +172,7 @@ void updateUser() async {
 }
 ```
 
-> Note: `mutation.mutationKey` and `query.queryKey` remain available for state inspection
+> Note: `mutation.mutationKey` and `getUserQuery.queryKey` remain available for state inspection
 > (`exists`, `isPending`, `error`, `invalidate`, etc.). The convenience methods on the serializable
 > just hide the chain for the rendering-path verbs (`mutate`, `query`, `infiniteQuery`, `definition`).
 

@@ -3,9 +3,12 @@ import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:typed_cached_query/src/builders/stream_backed_state.dart';
 
 /// A [TypedInfiniteQueryBuilder] widget that builds its child based on the state of an [InfiniteQuery].
-/// This builder only accepts infinite queries created from [InfiniteQueryKey.query()].
+///
+/// The [query] is normally produced by calling `request.infiniteQuery(...)` on an
+/// [InfiniteQuerySerializable] (e.g. `feed.infiniteQuery(prefetchPages: 2)`). The
+/// `*Key.query(...)` form is still accepted — it's the same call under the hood.
 class TypedInfiniteQueryBuilder<T, A> extends StatefulWidget {
-  /// The infinite query to listen to. Must be created using [InfiniteQueryKey.query()].
+  /// The infinite query to listen to. Typically built via `request.infiniteQuery(...)`.
   final InfiniteQuery<T, A> query;
 
   /// The builder function that creates the widget tree based on infinite query state.

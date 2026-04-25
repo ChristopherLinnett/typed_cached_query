@@ -421,7 +421,7 @@ void main() {
     });
   });
 
-  group('MutationSerializable.mutate convenience getter', () {
+  group('MutationSerializable.mutate convenience method', () {
     test('serializable.mutate(...) executes the same pipeline as the previous mutationKey.mutate', () async {
       final request = CreateUserRequest(name: 'Bo', email: 'bo@example.com');
       final user = User(id: 7, name: 'Bo', email: 'bo@example.com');
