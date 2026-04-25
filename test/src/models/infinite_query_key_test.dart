@@ -514,4 +514,56 @@ void main() {
       expect(nextArg.limit, 10);
     });
   });
+
+  group('InfiniteQueryKey responseHandler wiring', () {
+    test('queryFn raw page is passed through responseHandler before reaching state', () async {
+      // Fixture's queryFn returns a Map; responseHandler builds a PagedResponse with a sentinel
+      // suffix on the user name. If the wrapper bypassed responseHandler, state.data.pages would
+      // contain a Map (or fail to construct), and the assertion would fail.
+      final request = _MapInfiniteQuery(localCache: cachedQuery);
+      final infiniteQueryKey = InfiniteQueryKey(request);
+      final query = infiniteQueryKey.query();
+
+      await query.fetch();
+
+      final pages = query.state.data?.pages ?? const [];
+      expect(pages, isNotEmpty);
+      expect(pages.first, isA<PagedResponse>(), reason: 'state.data must contain the responseHandler-produced PagedResponse, not the raw Map from queryFn');
+      expect(pages.first.users.first.name, endsWith('-via-responseHandler'));
+    });
+  });
+}
+
+/// Fixture for the InfiniteQuery responseHandler-wiring test.
+class _MapInfiniteQuery extends InfiniteQuerySerializable<PagedResponse, PageArgs, ApiError> {
+  final CachedQuery localCache;
+  _MapInfiniteQuery({required this.localCache});
+
+  @override
+  String get keyGenerator => 'map_infinite_query';
+  @override
+  QueryException errorMapper(ApiError error) => QueryException(error.message, error.code);
+  @override
+  PagedResponse responseHandler(dynamic response) {
+    final map = response as Map<String, dynamic>;
+    final users = (map['users'] as List)
+        .map((u) {
+          final m = u as Map<String, dynamic>;
+          return User(id: m['id'] as int, name: '${m['name']}-via-responseHandler', email: m['email'] as String);
+        })
+        .toList();
+    return PagedResponse(users: users, page: map['page'] as int, totalPages: map['totalPages'] as int, hasNext: map['hasNext'] as bool);
+  }
+  @override
+  Future<dynamic> queryFn(PageArgs arg) async => {
+        'users': [{'id': 1, 'name': 'Raw', 'email': 'raw@example.com'}],
+        'page': arg.page,
+        'totalPages': 1,
+        'hasNext': false,
+      };
+  @override
+  CachedQuery get cache => localCache;
+  @override
+  PageArgs? getNextArg(InfiniteQueryData<PagedResponse, PageArgs>? data) =>
+      (data == null || data.pages.isEmpty) ? PageArgs(page: 1, limit: 10) : null;
 }
