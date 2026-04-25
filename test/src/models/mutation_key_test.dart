@@ -68,7 +68,7 @@ class CreateUserMutation extends MutationSerializable<CreateUserMutation, User, 
   CreateUserMutation({required this.request, required this.apiService, MutationCache? cache}) : _cache = cache;
 
   @override
-  String keyGenerator() => 'create_user_${request.name}_${request.email}';
+  String get keyGenerator => 'create_user_${request.name}_${request.email}';
 
   @override
   OnErrorResults<CreateUserMutation, User?> errorMapper(CreateUserMutation request, ValidationError error, User? fallback) {

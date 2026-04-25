@@ -13,7 +13,7 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
   final RequestType request;
   MutationKey(this.request);
 
-  String get _valueKey => request.keyGenerator();
+  String get _valueKey => request.keyGenerator;
 
   Mutation<ReturnType, RequestType> definition({
     void Function(RequestType, MutationException, ReturnType?)? onError,

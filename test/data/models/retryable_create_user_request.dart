@@ -18,7 +18,7 @@ class RetryableCreateUserRequest extends MutationSerializable<RetryableCreateUse
   MutationCache? get cache => _cache;
 
   @override
-  String keyGenerator() => 'retryable_create_$name';
+  String get keyGenerator => 'retryable_create_$name';
 
   @override
   OnErrorResults<RetryableCreateUserRequest, User?> errorMapper(RetryableCreateUserRequest request, NetworkError error, User? fallback) {

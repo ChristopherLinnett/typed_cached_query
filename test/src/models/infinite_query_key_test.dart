@@ -84,7 +84,7 @@ class GetUsersInfiniteQuery extends InfiniteQuerySerializable<PagedResponse, Pag
   GetUsersInfiniteQuery({required this.apiService, required this.localCache});
 
   @override
-  String keyGenerator() => 'users_infinite';
+  String get keyGenerator => 'users_infinite';
 
   @override
   QueryException errorMapper(ApiError error) => QueryException('API Error: ${error.message}', error.code);
@@ -143,7 +143,7 @@ class _ThrowingGetNextArgQuery extends InfiniteQuerySerializable<PagedResponse, 
   _ThrowingGetNextArgQuery({required this.localCache, required this.errorToThrow});
 
   @override
-  String keyGenerator() => 'throwing_get_next_arg';
+  String get keyGenerator => 'throwing_get_next_arg';
   @override
   QueryException errorMapper(ApiError error) => QueryException('API Error: ${error.message}', error.code);
   @override

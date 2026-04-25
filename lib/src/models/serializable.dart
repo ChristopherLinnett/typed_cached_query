@@ -158,7 +158,7 @@ abstract class QuerySerializable<ReturnType, ErrorType> {
 ///   CreateUserMutation({required this.name, required this.email});
 ///
 ///   @override
-///   String keyGenerator() => 'create_user';
+///   String get keyGenerator => 'create_user';
 ///
 ///   @override
 ///   Future<User> mutationFn() => api.createUser(name: name, email: email);
@@ -194,8 +194,8 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
   /// can track in-flight state, deduplicate concurrent submissions, and dispatch optimistic updates.
   /// **Returns:** A stable, unique string per mutation type. Override per request only when the
   /// mutation is parameterised by data that should partition cache state (e.g. user id).
-  /// **Example:** `String keyGenerator() => 'create_user';`
-  String keyGenerator();
+  /// **Example:** `String get keyGenerator => 'create_user';`
+  String get keyGenerator;
 
   /// Maps a domain-specific [ErrorType] into a typed [OnErrorResults] for the mutation pipeline.
   ///
@@ -254,7 +254,7 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
 ///   GetUsersInfiniteQuery({this.pageSize = 20});
 ///
 ///   @override
-///   String keyGenerator() => 'users_infinite_$pageSize';
+///   String get keyGenerator => 'users_infinite_$pageSize';
 ///
 ///   @override
 ///   Future<PagedUsers> queryFn(int page) =>
@@ -294,8 +294,8 @@ abstract class InfiniteQuerySerializable<ReturnType, RequestData, ErrorType> {
   /// can track all loaded pages and dispatch updates correctly.
   /// **Returns:** A stable, unique string per infinite query type. Override per parameterised
   /// query so different page sizes, filters, or sort orders are cached separately.
-  /// **Example:** `String keyGenerator() => 'users_infinite_${pageSize}_$sortBy';`
-  String keyGenerator();
+  /// **Example:** `String get keyGenerator => 'users_infinite_${pageSize}_$sortBy';`
+  String get keyGenerator;
 
   /// Maps a domain-specific [ErrorType] into a [QueryException] for consistent error handling.
   ///

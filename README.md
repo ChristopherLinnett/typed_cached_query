@@ -83,7 +83,7 @@ class GetUserRequest extends QuerySerializable<User, ApiError> {
   GetUserRequest({required this.userId, required this.apiService});
 
   @override
-  String keyGenerator() => 'user_$userId';
+  String get keyGenerator => 'user_$userId';
 
   @override
   QueryException errorMapper(ApiError error) => 
@@ -117,7 +117,7 @@ class UpdateUserRequest extends MutationSerializable<UpdateUserRequest, User, Ap
   UpdateUserRequest({required this.name, required this.email, required this.apiService});
 
   @override
-  String keyGenerator() => 'update_user';
+  String get keyGenerator => 'update_user';
 
   @override
   OnErrorResults<UpdateUserRequest, User?> errorMapper(

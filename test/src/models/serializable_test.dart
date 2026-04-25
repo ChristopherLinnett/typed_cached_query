@@ -91,7 +91,7 @@ class TestMutationSerializable extends MutationSerializable<TestMutationSerializ
   TestMutationSerializable({required this.request});
 
   @override
-  String keyGenerator() => 'test_create_user_${request.name}';
+  String get keyGenerator => 'test_create_user_${request.name}';
 
   @override
   OnErrorResults<TestMutationSerializable, User?> errorMapper(TestMutationSerializable request, ApiError error, User? fallback) {
@@ -189,7 +189,15 @@ void main() {
       final request = CreateUserRequest(name: 'John', email: 'john@example.com');
       final mutationSerializable = TestMutationSerializable(request: request);
 
-      expect(mutationSerializable.keyGenerator(), 'test_create_user_John');
+      expect(mutationSerializable.keyGenerator, 'test_create_user_John');
+    });
+
+    test('keyGenerator is a getter (contract — same shape as QuerySerializable)', () {
+      // If keyGenerator regresses to a method form, this static-typed access would not compile.
+      final request = CreateUserRequest(name: 'A', email: 'a@b.c');
+      final m = TestMutationSerializable(request: request);
+      final String key = m.keyGenerator;
+      expect(key, isNotEmpty);
     });
 
     test('should map errors correctly', () {
@@ -319,7 +327,7 @@ void main() {
       final mutationSerializable = TestMutationSerializable(request: request);
 
       // Test full workflow
-      final key = mutationSerializable.keyGenerator();
+      final key = mutationSerializable.keyGenerator;
       final mutationResult = await mutationSerializable.mutationFn();
       final processedResult = mutationSerializable.responseHandler(mutationResult);
 
