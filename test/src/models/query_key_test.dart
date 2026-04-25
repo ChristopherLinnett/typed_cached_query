@@ -300,6 +300,36 @@ void main() {
       expect(result, newUser);
     });
 
+    test('updateData invokes the user function exactly once (existing data path)', () async {
+      final user = User(id: 1, name: 'A', email: 'a@b.c');
+      when(mockApiService.getUser(1)).thenAnswer((_) async => user);
+
+      final request = GetUserQuery(userId: 1, apiService: mockApiService, localCache: cachedQuery);
+      final queryKey = QueryKey(request);
+      await queryKey.query().fetch();
+
+      var calls = 0;
+      queryKey.updateData<User>((existingData) {
+        calls += 1;
+        return User(id: existingData!.id, name: '${existingData.name}!', email: existingData.email);
+      });
+
+      expect(calls, 1, reason: 'updateFunction must be invoked exactly once per updateData call');
+    });
+
+    test('updateData invokes the user function exactly once (no existing data path)', () async {
+      final request = GetUserQuery(userId: 2, apiService: mockApiService, localCache: cachedQuery);
+      final queryKey = QueryKey(request);
+
+      var calls = 0;
+      queryKey.updateData<User>((existingData) {
+        calls += 1;
+        return User(id: 2, name: 'New', email: 'n@b.c');
+      });
+
+      expect(calls, 1);
+    });
+
     test('should invalidate query correctly', () async {
       final user = User(id: 123, name: 'John Doe', email: 'john@example.com');
       when(mockApiService.getUser(123)).thenAnswer((_) async => user);
