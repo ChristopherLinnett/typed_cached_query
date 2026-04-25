@@ -35,29 +35,35 @@ class QueryKey<RequestType extends QuerySerializable<ReturnType, ErrorType>, Ret
     }
   }
 
-  Future<ReturnType> _wrappedQueryFn() {
+  Future<ReturnType> _wrappedQueryFn() async {
+    dynamic rawResponse;
     try {
-      return request.queryFn().then((response) {
-        try {
-          return request.responseHandler(response);
-        } catch (e) {
-          throw FormatException('parsing the response of type ${response.runtimeType} to $ReturnType failed: ${e.toString()}');
-        }
-      });
+      rawResponse = await request.queryFn();
     } catch (e) {
       if (e is ErrorType) rethrow;
-      if (e is FormatException) throw QueryException(e.message, 400);
       throw QueryException(
         'An unhandled exception has taken place, please update your definitions to include this error, error: ${e.toString()}',
         500,
       );
     }
+    try {
+      return request.responseHandler(rawResponse);
+    } catch (e) {
+      throw QueryException('parsing the response of type ${rawResponse.runtimeType} to $ReturnType failed: ${e.toString()}', 400);
+    }
   }
 
   void Function(dynamic) _wrappedOnError(void Function(QueryException)? userOnError) {
     return (error) {
-      if (error is QueryException) throw error;
-      userOnError?.call(request.errorMapper(error as ErrorType));
+      if (error is QueryException) {
+        userOnError?.call(error);
+        return;
+      }
+      if (error is ErrorType) {
+        userOnError?.call(request.errorMapper(error));
+        return;
+      }
+      userOnError?.call(QueryException('An unhandled exception occurred: ${error.toString()}', 500));
     };
   }
 
