@@ -5,7 +5,7 @@ import 'package:typed_cached_query/src/errors/query_exception.dart';
 import 'package:typed_cached_query/src/models/query_key.dart';
 import 'package:typed_cached_query/src/models/serializable.dart';
 
-/// Default linear backoff used when no [backoff] is supplied: 100 ms × attempt.
+/// Default linear backoff used when no `backoff` is supplied: 100 ms × attempt.
 /// `attempt` is 1-based — i.e. called with 1 between attempts 1 and 2, 2 between 2 and 3, etc.
 Duration defaultMutationBackoff(int attempt) => Duration(milliseconds: 100 * attempt);
 
