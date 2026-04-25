@@ -39,7 +39,7 @@ import 'package:typed_cached_query/src/models/infinite_query_key.dart';
 /// ## Usage
 /// ```dart
 /// final query = GetUserQuery(123);
-/// final result = await query.query().result;
+/// final result = await query.queryKey.query().result;
 /// ```
 ///
 /// ## Advanced Features
@@ -84,14 +84,6 @@ abstract class QuerySerializable<ReturnType, ErrorType> {
   /// **Error handling:** Should throw errors of type [ErrorType] for proper error mapping
   /// **Example:** HTTP client calls, database operations, file system access
   Future<dynamic> queryFn();
-
-  Query<ReturnType> Function({
-    void Function(QueryException)? onError,
-    void Function(ReturnType)? onSuccess,
-    QueryConfig<ReturnType>? config,
-    CachedQuery? cache,
-  })
-  get query => QueryKey(this).query;
 
   /// Serializes this request object into a JSON-compatible map.
   ///
