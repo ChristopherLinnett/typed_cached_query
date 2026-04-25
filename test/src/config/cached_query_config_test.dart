@@ -64,21 +64,32 @@ void main() {
       final observer = _RecordingObserver();
       final storage = _StubStorage();
       const customConfig = GlobalQueryConfig(refetchOnResume: false);
-      final lifecycleStream = const Stream<AppState>.empty();
-      final connectionStream = const Stream<ConnectionStatus>.empty();
+      final lifecycleController = StreamController<AppState>.broadcast();
+      final connectionController = StreamController<ConnectionStatus>.broadcast();
+      addTearDown(() async {
+        await lifecycleController.close();
+        await connectionController.close();
+      });
 
       TypedCachedQuery.configureFlutter(
         neverCheckConnection: true,
         storage: storage,
         config: customConfig,
         observers: [observer],
-        lifecycleStream: lifecycleStream,
-        connectionStream: connectionStream,
+        lifecycleStream: lifecycleController.stream,
+        connectionStream: connectionController.stream,
       );
 
       expect(CachedQuery.instance.observers, contains(observer));
       expect(CachedQuery.instance.defaultConfig.refetchOnResume, isFalse);
       expect(identical(CachedQuery.instance.storage, storage), isTrue, reason: 'storage must be forwarded by identity to the singleton');
+
+      // Stream-forwarding assertions: configureFlutter must subscribe to the supplied broadcast
+      // streams. With Stream.empty() (the previous shape) there was no observable signal that
+      // these parameters were actually wired — a regression that dropped them would have stayed
+      // green.
+      expect(lifecycleController.hasListener, isTrue, reason: 'configureFlutter must subscribe to the forwarded lifecycleStream');
+      expect(connectionController.hasListener, isTrue, reason: 'configureFlutter must subscribe to the forwarded connectionStream');
 
       // Observer end-to-end: drive a real query through the singleton and assert the observer fires.
       final query = Query<String>(
