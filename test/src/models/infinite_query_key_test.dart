@@ -429,6 +429,23 @@ void main() {
       expect(query.state.error, isNotNull);
     });
 
+    test('error getter does not throw when state.error is a QueryException (unknown-type path)', () async {
+      // After getNextArg wraps an unknown error as QueryException, the underlying state.error is
+      // a QueryException rather than ErrorType. The previous force-cast would TypeError here.
+      final request = _ThrowingGetNextArgQuery(localCache: cachedQuery, errorToThrow: StateError('unexpected'));
+      final infiniteQueryKey = InfiniteQueryKey(request);
+      final query = infiniteQueryKey.query();
+
+      await query.fetch();
+      try {
+        await query.getNextPage();
+      } catch (_) {/* expected */}
+
+      // The defensive error getter must return the QueryException as-is (no cast, no crash).
+      expect(() => infiniteQueryKey.error, returnsNormally);
+      expect(infiniteQueryKey.error, isA<QueryException>());
+    });
+
     test('should invalidate query correctly', () async {
       final pageResponse = PagedResponse(
         users: [User(id: 1, name: 'John', email: 'john@example.com')],

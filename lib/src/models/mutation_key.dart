@@ -121,7 +121,13 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
 
   bool get isError => _getMutation != null && _getMutation!.state.isError;
 
-  MutationException? get error => _getMutation == null || _getMutation!.state is! MutationError
-      ? null
-      : request.errorMapper(request, (_getMutation!.state as MutationError).error as ErrorType, null).error;
+  MutationException? get error {
+    if (_getMutation == null) return null;
+    final state = _getMutation!.state;
+    if (state is! MutationError) return null;
+    final stateError = state.error;
+    if (stateError is MutationException) return stateError;
+    if (stateError is ErrorType) return request.errorMapper(request, stateError, null).error;
+    return MutationException('Unhandled error: $stateError', 500);
+  }
 }
