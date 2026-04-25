@@ -204,7 +204,7 @@ abstract class MutationSerializable<RequestType extends MutationSerializable<Req
   /// Transforms the raw mutation response into the expected [ReturnType].
   ///
   /// **Purpose:** Handles JSON parsing, data transformation, and type conversion of the value
-  /// returned by [mutationFn] before it reaches [onSuccess] callbacks.
+  /// returned by [mutationFn] before it reaches `onSuccess` callbacks.
   /// **Parameters:**
   /// - [response]: Raw response from the API (typically JSON, but can be any type).
   /// **Returns:** Parsed and validated data of type [ReturnType].
@@ -353,7 +353,7 @@ abstract class InfiniteQuerySerializable<ReturnType, RequestData, ErrorType> {
   /// **Default:** `false` (in-memory caching only).
   /// **Override to `true` when:** You want the infinite query state to survive app restarts.
   /// **Requirements:** Both [storageSerializer] and [storageDeserializer] must be provided, and the
-  /// storage interface must be initialised via [TypedCachedQuery.configureFlutter].
+  /// storage interface must be initialised via `TypedCachedQuery.configureFlutter`.
   bool get storeQuery => false;
 
   /// Custom cache instance for this specific infinite query type.
