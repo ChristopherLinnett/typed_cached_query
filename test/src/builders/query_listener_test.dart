@@ -29,14 +29,7 @@ void main() {
 
   testWidgets('renders the child widget', (tester) async {
     final query = _makeQuery(cache, 'ql-render', () async => 'ok');
-    await tester.pumpWidget(
-      _harness(
-        TypedQueryListener<String>(
-          query: query,
-          child: const Text('child'),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_harness(TypedQueryListener<String>(query: query, child: const Text('child'))));
     expect(find.text('child'), findsOneWidget);
   });
 
@@ -70,15 +63,7 @@ void main() {
     final query = _makeQuery(cache, 'ql-error', () async => throw StateError('nope'));
     var errors = 0;
 
-    await tester.pumpWidget(
-      _harness(
-        TypedQueryListener<String>(
-          query: query,
-          onError: (_, _) => errors += 1,
-          child: const SizedBox.shrink(),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_harness(TypedQueryListener<String>(query: query, onError: (_, _) => errors += 1, child: const SizedBox.shrink())));
     await tester.pumpAndSettle();
 
     expect(errors, greaterThanOrEqualTo(1));
@@ -152,13 +137,8 @@ void main() {
 
     var changesA = 0;
     var changesB = 0;
-    Widget under(Query<String> q, void Function(BuildContext, QueryStatus<String>) onChange) => _harness(
-      TypedQueryListener<String>(
-        query: q,
-        onChange: onChange,
-        child: const SizedBox.shrink(),
-      ),
-    );
+    Widget under(Query<String> q, void Function(BuildContext, QueryStatus<String>) onChange) =>
+        _harness(TypedQueryListener<String>(query: q, onChange: onChange, child: const SizedBox.shrink()));
 
     await tester.pumpWidget(under(qa, (_, __) => changesA += 1));
     await qa.fetch();
@@ -185,15 +165,7 @@ void main() {
     });
 
     var changes = 0;
-    await tester.pumpWidget(
-      _harness(
-        TypedQueryListener<String>(
-          query: query,
-          onChange: (_, __) => changes += 1,
-          child: const SizedBox.shrink(),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_harness(TypedQueryListener<String>(query: query, onChange: (_, __) => changes += 1, child: const SizedBox.shrink())));
     await tester.pumpWidget(_harness(const SizedBox.shrink()));
     await tester.pumpAndSettle();
     // No expectations on `changes` — the assertion is that pumpAndSettle does not throw.

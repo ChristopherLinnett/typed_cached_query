@@ -33,6 +33,9 @@ class _TypedInfiniteQueryBuilderState<T, A> extends State<TypedInfiniteQueryBuil
   Stream<InfiniteQueryStatus<T, A>> streamFor(TypedInfiniteQueryBuilder<T, A> widget) => widget.query.stream;
 
   @override
+  Object subscriptionIdentityFor(TypedInfiniteQueryBuilder<T, A> widget) => widget.query.key;
+
+  @override
   InfiniteQueryStatus<T, A> initialStateFor(TypedInfiniteQueryBuilder<T, A> widget) => widget.query.state;
 
   @override

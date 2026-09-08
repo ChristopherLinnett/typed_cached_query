@@ -462,10 +462,7 @@ void main() {
 
       Object? thrown;
       try {
-        await mutation.mutate(
-          retryAttempts: 3,
-          shouldRetry: (_) => true,
-        );
+        await mutation.mutate(retryAttempts: 3, shouldRetry: (_) => true);
       } catch (e) {
         thrown = e;
       }

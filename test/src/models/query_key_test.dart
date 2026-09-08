@@ -229,8 +229,11 @@ void main() {
       }
 
       final stateOrCaught = query.state.error ?? captured;
-      expect(stateOrCaught, isA<QueryException>(),
-          reason: 'async non-ErrorType errors must be wrapped as QueryException, not surface as TypeError or the raw exception');
+      expect(
+        stateOrCaught,
+        isA<QueryException>(),
+        reason: 'async non-ErrorType errors must be wrapped as QueryException, not surface as TypeError or the raw exception',
+      );
     });
 
     test('FormatException message names the actual ReturnType (not the literal "Type")', () async {
@@ -516,7 +519,9 @@ void main() {
 
       try {
         await query.fetch();
-      } catch (_) {/* expected */}
+      } catch (_) {
+        /* expected */
+      }
 
       expect(captured, isNotNull);
       expect(captured!.statusCode, 404);

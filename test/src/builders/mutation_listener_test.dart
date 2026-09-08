@@ -15,14 +15,7 @@ void main() {
 
   testWidgets('renders the child widget', (tester) async {
     final mutation = _makeMutation(cache, 'ml-render', (i) async => 'ok-$i');
-    await tester.pumpWidget(
-      _harness(
-        TypedMutationListener<String, int>(
-          mutation: mutation,
-          child: const Text('child'),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_harness(TypedMutationListener<String, int>(mutation: mutation, child: const Text('child'))));
     expect(find.text('child'), findsOneWidget);
   });
 
@@ -30,13 +23,7 @@ void main() {
     final mutation = _makeMutation(cache, 'ml-data', (i) async => 'ok-$i');
     var calls = 0;
     await tester.pumpWidget(
-      _harness(
-        TypedMutationListener<String, int>(
-          mutation: mutation,
-          onData: (_, _) => calls += 1,
-          child: const SizedBox.shrink(),
-        ),
-      ),
+      _harness(TypedMutationListener<String, int>(mutation: mutation, onData: (_, _) => calls += 1, child: const SizedBox.shrink())),
     );
     await mutation.mutate(1);
     await tester.pumpAndSettle();
@@ -47,13 +34,7 @@ void main() {
     final mutation = _makeMutation(cache, 'ml-success', (i) async => 'ok-$i');
     var successes = 0;
     await tester.pumpWidget(
-      _harness(
-        TypedMutationListener<String, int>(
-          mutation: mutation,
-          onSuccess: (_, _) => successes += 1,
-          child: const SizedBox.shrink(),
-        ),
-      ),
+      _harness(TypedMutationListener<String, int>(mutation: mutation, onSuccess: (_, _) => successes += 1, child: const SizedBox.shrink())),
     );
     await mutation.mutate(1);
     await tester.pumpAndSettle();
@@ -78,13 +59,7 @@ void main() {
 
     var successes = 0;
     await tester.pumpWidget(
-      _harness(
-        TypedMutationListener<String, int>(
-          mutation: mutation,
-          onSuccess: (_, _) => successes += 1,
-          child: const SizedBox.shrink(),
-        ),
-      ),
+      _harness(TypedMutationListener<String, int>(mutation: mutation, onSuccess: (_, _) => successes += 1, child: const SizedBox.shrink())),
     );
     await tester.pumpAndSettle();
 
@@ -97,13 +72,7 @@ void main() {
     final mutation = _makeMutation(cache, 'ml-loading', (i) async => 'ok-$i');
     var loadings = 0;
     await tester.pumpWidget(
-      _harness(
-        TypedMutationListener<String, int>(
-          mutation: mutation,
-          onLoading: (_, _) => loadings += 1,
-          child: const SizedBox.shrink(),
-        ),
-      ),
+      _harness(TypedMutationListener<String, int>(mutation: mutation, onLoading: (_, _) => loadings += 1, child: const SizedBox.shrink())),
     );
     await mutation.mutate(1);
     await tester.pumpAndSettle();
@@ -114,17 +83,13 @@ void main() {
     final mutation = _makeMutation(cache, 'ml-error', (i) async => throw StateError('nope'));
     var errors = 0;
     await tester.pumpWidget(
-      _harness(
-        TypedMutationListener<String, int>(
-          mutation: mutation,
-          onError: (_, _) => errors += 1,
-          child: const SizedBox.shrink(),
-        ),
-      ),
+      _harness(TypedMutationListener<String, int>(mutation: mutation, onError: (_, _) => errors += 1, child: const SizedBox.shrink())),
     );
     try {
       await mutation.mutate(1);
-    } catch (_) {/* expected */}
+    } catch (_) {
+      /* expected */
+    }
     await tester.pumpAndSettle();
     expect(errors, greaterThanOrEqualTo(1));
   });
@@ -135,13 +100,8 @@ void main() {
 
     var dataA = 0;
     var dataB = 0;
-    Widget under(Mutation<String, int> m, void Function(BuildContext, MutationState<String>) onData) => _harness(
-      TypedMutationListener<String, int>(
-        mutation: m,
-        onData: onData,
-        child: const SizedBox.shrink(),
-      ),
-    );
+    Widget under(Mutation<String, int> m, void Function(BuildContext, MutationState<String>) onData) =>
+        _harness(TypedMutationListener<String, int>(mutation: m, onData: onData, child: const SizedBox.shrink()));
 
     await tester.pumpWidget(under(ma, (_, _) => dataA += 1));
     await ma.mutate(1);
@@ -166,15 +126,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       return 'late-$i';
     });
-    await tester.pumpWidget(
-      _harness(
-        TypedMutationListener<String, int>(
-          mutation: mutation,
-          onData: (_, _) {},
-          child: const SizedBox.shrink(),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_harness(TypedMutationListener<String, int>(mutation: mutation, onData: (_, _) {}, child: const SizedBox.shrink())));
     await tester.pumpWidget(_harness(const SizedBox.shrink()));
     await tester.pumpAndSettle();
   });

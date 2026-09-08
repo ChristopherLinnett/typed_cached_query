@@ -3,7 +3,6 @@ import 'package:mockito/annotations.dart';
 
 import 'package:typed_cached_query/src/errors/query_exception.dart';
 
-
 // Mock API Error Types
 class ApiError {
   final String message;

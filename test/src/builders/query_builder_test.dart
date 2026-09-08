@@ -48,12 +48,7 @@ void main() {
     final queryA = _makeQuery(cache, 'q-A', () async => 'A');
     final queryB = _makeQuery(cache, 'q-B', () async => 'B');
 
-    Widget under(Query<String> q) => _harness(
-      TypedQueryBuilder<String>(
-        query: q,
-        builder: (context, state) => Text(state.data ?? '?'),
-      ),
-    );
+    Widget under(Query<String> q) => _harness(TypedQueryBuilder<String>(query: q, builder: (context, state) => Text(state.data ?? '?')));
 
     await tester.pumpWidget(under(queryA));
     await tester.pumpAndSettle();
@@ -71,6 +66,84 @@ void main() {
     expect(find.text('A-updated'), findsNothing);
   });
 
+  testWidgets('a parent rebuild over the SAME query keeps the subscription, so a stale query is not refetched', (tester) async {
+    // staleDuration zero: any re-listen would run the listen-to-fetch path and fetch again.
+    var fetches = 0;
+    final query = _makeQuery(cache, 'q-same', () async {
+      fetches++;
+      return 'value $fetches';
+    });
+
+    late StateSetter rebuildParent;
+    await tester.pumpWidget(
+      _harness(
+        StatefulBuilder(
+          builder: (context, setState) {
+            rebuildParent = setState;
+            return TypedQueryBuilder<String>(
+              // What a rebuilt parent hands the builder: the same key, read again.
+              query: _makeQuery(cache, 'q-same', () async => 'never'),
+              builder: (context, state) => Text(state.data ?? 'idle'),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('value 1'), findsOneWidget);
+    expect(fetches, 1);
+
+    for (var i = 0; i < 3; i++) {
+      rebuildParent(() {});
+      await tester.pumpAndSettle();
+    }
+
+    expect(fetches, 1, reason: 'a rebuild is not a reason to fetch');
+    expect(find.text('value 1'), findsOneWidget);
+
+    // The subscription is still live: a state change on the query still reaches the widget.
+    query.update((_) => 'pushed');
+    await tester.pumpAndSettle();
+    expect(find.text('pushed'), findsOneWidget);
+  });
+
+  testWidgets('a rebuild that yields a NEW instance for the same key keeps the subscription too', (tester) async {
+    // The cache creates a fresh Query object whenever the config it is asked for differs; every
+    // instance for a key shares one controller. Identity is the KEY, so this is not a move.
+    var fetches = 0;
+    Query<String> withStale(Duration stale) => Query<String>(
+      cache: cache,
+      key: 'q-fresh-instance',
+      queryFn: () async {
+        fetches++;
+        return 'value $fetches';
+      },
+      config: QueryConfig(staleDuration: stale, ignoreCacheDuration: true),
+    );
+
+    late StateSetter rebuildParent;
+    var stale = Duration.zero;
+    await tester.pumpWidget(
+      _harness(
+        StatefulBuilder(
+          builder: (context, setState) {
+            rebuildParent = setState;
+            return TypedQueryBuilder<String>(query: withStale(stale), builder: (context, state) => Text(state.data ?? 'idle'));
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(fetches, 1);
+
+    stale = const Duration(milliseconds: 1);
+    rebuildParent(() {});
+    await tester.pumpAndSettle();
+
+    expect(fetches, 1, reason: 'a fresh instance for the same key is the same subscription');
+    expect(find.text('value 1'), findsOneWidget);
+  });
+
   testWidgets('dispose-time mounted guard suppresses post-dispose setState', (tester) async {
     // The widget guards setState with `if (mounted)`, so this test exercises the mounted-guard
     // path — it does not (and cannot from outside the widget) directly observe StreamSubscription
@@ -81,14 +154,7 @@ void main() {
       return 'late';
     });
 
-    await tester.pumpWidget(
-      _harness(
-        TypedQueryBuilder<String>(
-          query: query,
-          builder: (context, state) => Text(state.data ?? '?'),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_harness(TypedQueryBuilder<String>(query: query, builder: (context, state) => Text(state.data ?? '?'))));
     await tester.pumpWidget(_harness(const SizedBox.shrink()));
     await tester.pumpAndSettle();
   });

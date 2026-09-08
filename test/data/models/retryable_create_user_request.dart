@@ -1,4 +1,5 @@
 import 'package:typed_cached_query/typed_cached_query.dart';
+
 import 'user.dart';
 import 'network_error.dart';
 import 'mock_api_service.dart';

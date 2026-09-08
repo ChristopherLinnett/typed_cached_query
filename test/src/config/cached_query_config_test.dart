@@ -99,7 +99,11 @@ void main() {
         config: const QueryConfig(staleDuration: Duration.zero, ignoreCacheDuration: true),
       );
       await query.fetch();
-      expect(observer.onChangeCount, greaterThan(0), reason: 'a registered observer must receive at least one onChange event after a real query fetch');
+      expect(
+        observer.onChangeCount,
+        greaterThan(0),
+        reason: 'a registered observer must receive at least one onChange event after a real query fetch',
+      );
     });
   });
 }

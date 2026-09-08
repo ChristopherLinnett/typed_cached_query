@@ -45,9 +45,7 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
         dynamic raw;
         for (var attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
-            raw = timeoutSeconds != null
-                ? await request.mutationFn().timeout(Duration(seconds: timeoutSeconds))
-                : await request.mutationFn();
+            raw = timeoutSeconds != null ? await request.mutationFn().timeout(Duration(seconds: timeoutSeconds)) : await request.mutationFn();
             break;
           } catch (e) {
             if (e is TimeoutException && capturedOnTimeout != null) rethrow;

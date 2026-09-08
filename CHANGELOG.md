@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `TypedQueryBuilder`, `TypedInfiniteQueryBuilder`, `TypedQueryListener`, `TypedMutationBuilder` and `TypedMutationListener` no longer cancel and re-subscribe on every parent rebuild. `didUpdateWidget` compared the streams, and `Subject.stream` returns a new wrapper object per call, so the comparison was never equal; re-listening to a `Query` runs its listen-to-fetch path, which refetches whenever the data is stale, so any surface with a rebuilding ancestor refetched every query under it once per stale window. The subscription now moves only when the query or mutation object itself changes.
+
 ### Added
 - `QuerySerializableExtension.query({...})` — convenience method on the serializable, replaces the `request.queryKey.query(...)` chain. Same parameter surface as `QueryKey.query()`.
 - `InfiniteQuerySerializableExtension.infiniteQuery({...})` — convenience method on the serializable, replaces the `request.infiniteQueryKey.query(...)` chain. Same parameter surface as `InfiniteQueryKey.query()`.

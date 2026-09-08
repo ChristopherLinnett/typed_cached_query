@@ -25,8 +25,7 @@ import 'query_key_test.dart' as _i2;
 // ignore_for_file: invalid_use_of_internal_member
 
 class _FakeUser_0 extends _i1.SmartFake implements _i2.User {
-  _FakeUser_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
+  _FakeUser_0(Object parent, Invocation parentInvocation) : super(parent, parentInvocation);
 }
 
 /// A class which mocks [MockApiService].
@@ -41,17 +40,12 @@ class MockMockApiService extends _i1.Mock implements _i2.MockApiService {
   _i3.Future<_i2.User> getUser(int? id) =>
       (super.noSuchMethod(
             Invocation.method(#getUser, [id]),
-            returnValue: _i3.Future<_i2.User>.value(
-              _FakeUser_0(this, Invocation.method(#getUser, [id])),
-            ),
+            returnValue: _i3.Future<_i2.User>.value(_FakeUser_0(this, Invocation.method(#getUser, [id]))),
           )
           as _i3.Future<_i2.User>);
 
   @override
   _i3.Future<List<_i2.User>> getUsers() =>
-      (super.noSuchMethod(
-            Invocation.method(#getUsers, []),
-            returnValue: _i3.Future<List<_i2.User>>.value(<_i2.User>[]),
-          )
+      (super.noSuchMethod(Invocation.method(#getUsers, []), returnValue: _i3.Future<List<_i2.User>>.value(<_i2.User>[]))
           as _i3.Future<List<_i2.User>>);
 }

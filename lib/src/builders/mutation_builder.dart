@@ -28,6 +28,9 @@ class _TypedMutationBuilderState<T, R> extends State<TypedMutationBuilder<T, R>>
   Stream<MutationState<T>> streamFor(TypedMutationBuilder<T, R> widget) => widget.mutation.stream;
 
   @override
+  Object subscriptionIdentityFor(TypedMutationBuilder<T, R> widget) => widget.mutation.key ?? widget.mutation;
+
+  @override
   MutationState<T> initialStateFor(TypedMutationBuilder<T, R> widget) => widget.mutation.state;
 
   @override

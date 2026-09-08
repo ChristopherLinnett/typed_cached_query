@@ -374,7 +374,7 @@ void main() {
 
     test('should serialize and deserialize query data correctly', () async {
       final querySerializable = TestQuerySerializable(userId: 999, cache: cachedQuery);
-      
+
       // Execute query to get result
       final result = await querySerializable.queryFn();
       expect(result.id, 999);
@@ -383,7 +383,7 @@ void main() {
       // Test serialization
       final serializer = querySerializable.storageSerializer;
       expect(serializer, isNotNull);
-      
+
       final serializedData = serializer!(result);
       expect(serializedData['id'], 999);
       expect(serializedData['name'], 'Test User');
@@ -414,7 +414,7 @@ void main() {
       for (int i = 1; i <= 3; i++) {
         final querySerializable = TestQuerySerializable(userId: i * 100, cache: cachedQuery);
         queries.add(querySerializable);
-        
+
         final user = await querySerializable.queryFn();
         originalUsers.add(user);
 
@@ -430,13 +430,13 @@ void main() {
       for (int i = 0; i < queries.length; i++) {
         final query = queries[i];
         final originalUser = originalUsers[i];
-        
+
         final retrievedData = dataStore.retrieve(query.keyGenerator);
         expect(retrievedData, isNotNull);
 
         final deserializer = query.storageDeserializer!;
         final deserializedUser = deserializer(retrievedData!);
-        
+
         expect(deserializedUser.id, originalUser.id);
         expect(deserializedUser.name, originalUser.name);
         expect(deserializedUser.email, originalUser.email);
@@ -445,7 +445,7 @@ void main() {
 
     test('should handle queries without storage enabled', () {
       final querySerializableNoStorage = TestQuerySerializableNoStorage(userId: 777, cache: cachedQuery);
-      
+
       // Serializers should be null
       expect(querySerializableNoStorage.storageSerializer, isNull);
       expect(querySerializableNoStorage.storageDeserializer, isNull);
@@ -463,7 +463,7 @@ void main() {
       // Same data should generate same keys
       expect(query1.keyGenerator, query2.keyGenerator);
       expect(query1.keyGenerator, 'TestQuerySerializable-{userId: 456}');
-      
+
       // Different data should generate different keys
       expect(query1.keyGenerator, isNot(query3.keyGenerator));
       expect(query3.keyGenerator, 'TestQuerySerializable-{userId: 789}');
@@ -471,23 +471,23 @@ void main() {
 
     test('should handle serialization roundtrip with complex data', () async {
       final querySerializable = TestQuerySerializable(userId: 12345, cache: cachedQuery);
-      
+
       // Create user with complex data
       final originalUser = User(id: 12345, name: 'Complex User Name With Spaces', email: 'complex.email+test@example.com');
-      
+
       // Serialize
       final serializer = querySerializable.storageSerializer!;
       final serializedData = serializer(originalUser);
-      
+
       // Store and retrieve
       dataStore.store('test_complex', serializedData);
       final retrievedData = dataStore.retrieve('test_complex');
       expect(retrievedData, isNotNull);
-      
+
       // Deserialize
       final deserializer = querySerializable.storageDeserializer!;
       final deserializedUser = deserializer(retrievedData!);
-      
+
       // Verify exact match
       expect(deserializedUser.id, originalUser.id);
       expect(deserializedUser.name, originalUser.name);
