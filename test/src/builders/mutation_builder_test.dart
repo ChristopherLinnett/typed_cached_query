@@ -4,11 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:typed_cached_query/src/builders/mutation_builder.dart';
 
 Mutation<String, int> _makeMutation(MutationCache cache, String key, Future<String> Function(int) fn) {
-  return Mutation<String, int>(
-    cache: cache,
-    key: key,
-    mutationFn: fn,
-  );
+  return Mutation<String, int>(cache: cache, key: key, mutationFn: fn);
 }
 
 Widget _harness(Widget child) => Directionality(textDirection: TextDirection.ltr, child: child);
@@ -47,12 +43,8 @@ void main() {
     final m1 = _makeMutation(cache, 'm-1', (i) async => '1-$i');
     final m2 = _makeMutation(cache, 'm-2', (i) async => '2-$i');
 
-    Widget under(Mutation<String, int> m) => _harness(
-      TypedMutationBuilder<String, int>(
-        mutation: m,
-        builder: (context, state, mutate) => Text(state.data ?? '?'),
-      ),
-    );
+    Widget under(Mutation<String, int> m) =>
+        _harness(TypedMutationBuilder<String, int>(mutation: m, builder: (context, state, mutate) => Text(state.data ?? '?')));
 
     await tester.pumpWidget(under(m1));
     await m1.mutate(1);
@@ -78,12 +70,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      _harness(
-        TypedMutationBuilder<String, int>(
-          mutation: mutation,
-          builder: (context, state, mutate) => Text(state.data ?? '?'),
-        ),
-      ),
+      _harness(TypedMutationBuilder<String, int>(mutation: mutation, builder: (context, state, mutate) => Text(state.data ?? '?'))),
     );
     await tester.pumpWidget(_harness(const SizedBox.shrink()));
     await tester.pumpAndSettle();

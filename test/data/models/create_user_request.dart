@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:typed_cached_query/src/errors/query_exception.dart';
 import 'package:typed_cached_query/src/models/serializable.dart';
+
 import 'user.dart';
 import 'validation_error.dart';
 import 'mock_api_service.dart';

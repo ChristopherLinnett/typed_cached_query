@@ -25,8 +25,7 @@ import 'infinite_query_key_test.dart' as _i2;
 // ignore_for_file: invalid_use_of_internal_member
 
 class _FakePagedResponse_0 extends _i1.SmartFake implements _i2.PagedResponse {
-  _FakePagedResponse_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
+  _FakePagedResponse_0(Object parent, Invocation parentInvocation) : super(parent, parentInvocation);
 }
 
 /// A class which mocks [MockApiService].
@@ -41,12 +40,7 @@ class MockMockApiService extends _i1.Mock implements _i2.MockApiService {
   _i3.Future<_i2.PagedResponse> getUsersPage(_i2.PageArgs? args) =>
       (super.noSuchMethod(
             Invocation.method(#getUsersPage, [args]),
-            returnValue: _i3.Future<_i2.PagedResponse>.value(
-              _FakePagedResponse_0(
-                this,
-                Invocation.method(#getUsersPage, [args]),
-              ),
-            ),
+            returnValue: _i3.Future<_i2.PagedResponse>.value(_FakePagedResponse_0(this, Invocation.method(#getUsersPage, [args]))),
           )
           as _i3.Future<_i2.PagedResponse>);
 }

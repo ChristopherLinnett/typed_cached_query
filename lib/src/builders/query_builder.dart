@@ -21,10 +21,12 @@ class TypedQueryBuilder<T> extends StatefulWidget {
   State<TypedQueryBuilder<T>> createState() => _TypedQueryBuilderState<T>();
 }
 
-class _TypedQueryBuilderState<T> extends State<TypedQueryBuilder<T>>
-    with StreamBackedState<QueryStatus<T>, TypedQueryBuilder<T>> {
+class _TypedQueryBuilderState<T> extends State<TypedQueryBuilder<T>> with StreamBackedState<QueryStatus<T>, TypedQueryBuilder<T>> {
   @override
   Stream<QueryStatus<T>> streamFor(TypedQueryBuilder<T> widget) => widget.query.stream;
+
+  @override
+  Object subscriptionIdentityFor(TypedQueryBuilder<T> widget) => widget.query.key;
 
   @override
   QueryStatus<T> initialStateFor(TypedQueryBuilder<T> widget) => widget.query.state;

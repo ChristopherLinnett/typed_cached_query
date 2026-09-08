@@ -429,18 +429,18 @@ extension MutationSerializableExtension<T extends MutationSerializable<T, Return
     void Function(T)? onTimeout,
     Duration Function(int attempt)? backoff,
   }) => mutationKey.definition(
-        onError: onError,
-        onSuccess: onSuccess,
-        cache: cache,
-        onStartMutation: onStartMutation,
-        invalidateQueries: invalidateQueries,
-        refetchQueries: refetchQueries,
-        retryAttempts: retryAttempts,
-        shouldRetry: shouldRetry,
-        timeoutSeconds: timeoutSeconds,
-        onTimeout: onTimeout,
-        backoff: backoff,
-      );
+    onError: onError,
+    onSuccess: onSuccess,
+    cache: cache,
+    onStartMutation: onStartMutation,
+    invalidateQueries: invalidateQueries,
+    refetchQueries: refetchQueries,
+    retryAttempts: retryAttempts,
+    shouldRetry: shouldRetry,
+    timeoutSeconds: timeoutSeconds,
+    onTimeout: onTimeout,
+    backoff: backoff,
+  );
 
   /// Convenience entry point: trigger this mutation directly from the serializable.
   ///
@@ -518,13 +518,13 @@ extension InfiniteQuerySerializableExtension<
     int? prefetchPages,
     InfiniteQueryData<ReturnType, RequestData>? initialData,
   }) => infiniteQueryKey.query(
-        onError: onError,
-        onSuccess: onSuccess,
-        config: config,
-        cache: cache,
-        prefetchPages: prefetchPages,
-        initialData: initialData,
-      );
+    onError: onError,
+    onSuccess: onSuccess,
+    config: config,
+    cache: cache,
+    prefetchPages: prefetchPages,
+    initialData: initialData,
+  );
 }
 
 class OnErrorResults<RequestType, ReturnType> {

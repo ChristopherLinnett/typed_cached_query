@@ -47,15 +47,7 @@ class TypedMutationListener<T, R> extends StatefulWidget {
   final void Function(BuildContext context, MutationState<T> state)? onLoading;
 
   /// Creates a [TypedMutationListener].
-  const TypedMutationListener({
-    super.key,
-    required this.mutation,
-    required this.child,
-    this.onData,
-    this.onError,
-    this.onSuccess,
-    this.onLoading,
-  });
+  const TypedMutationListener({super.key, required this.mutation, required this.child, this.onData, this.onError, this.onSuccess, this.onLoading});
 
   @override
   State<TypedMutationListener<T, R>> createState() => _TypedMutationListenerState<T, R>();
@@ -65,6 +57,9 @@ class _TypedMutationListenerState<T, R> extends State<TypedMutationListener<T, R
     with StreamBackedState<MutationState<T>, TypedMutationListener<T, R>> {
   @override
   Stream<MutationState<T>> streamFor(TypedMutationListener<T, R> widget) => widget.mutation.stream;
+
+  @override
+  Object subscriptionIdentityFor(TypedMutationListener<T, R> widget) => widget.mutation.key ?? widget.mutation;
 
   @override
   MutationState<T> initialStateFor(TypedMutationListener<T, R> widget) => widget.mutation.state;

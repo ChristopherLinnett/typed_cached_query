@@ -153,8 +153,12 @@ class _ThrowingGetNextArgQuery extends InfiniteQuerySerializable<PagedResponse, 
   @override
   CachedQuery get cache => localCache;
   @override
-  Future<PagedResponse> queryFn(PageArgs arg) async =>
-      PagedResponse(users: [User(id: arg.page, name: 'u${arg.page}', email: 'u@b.c')], page: arg.page, totalPages: 5, hasNext: true);
+  Future<PagedResponse> queryFn(PageArgs arg) async => PagedResponse(
+    users: [User(id: arg.page, name: 'u${arg.page}', email: 'u@b.c')],
+    page: arg.page,
+    totalPages: 5,
+    hasNext: true,
+  );
   @override
   PageArgs? getNextArg(InfiniteQueryData<PagedResponse, PageArgs>? data) {
     if (data == null || data.pages.isEmpty) return PageArgs(page: 1, limit: 10);
@@ -413,10 +417,16 @@ void main() {
       // Subsequent getNextArg throws — must surface as error, not silent end-of-pagination.
       try {
         await query.getNextPage();
-      } catch (_) {/* expected to surface */}
+      } catch (_) {
+        /* expected to surface */
+      }
 
       expect(infiniteQueryKey.isError, isTrue, reason: 'The wrapper must report isError after a getNextArg failure');
-      expect(query.state, isA<InfiniteQueryError<PagedResponse, PageArgs>>(), reason: 'state must be InfiniteQueryError, not InfiniteQuerySuccess(hasReachedMax: true)');
+      expect(
+        query.state,
+        isA<InfiniteQueryError<PagedResponse, PageArgs>>(),
+        reason: 'state must be InfiniteQueryError, not InfiniteQuerySuccess(hasReachedMax: true)',
+      );
       // Assert the wrapper contract (errorMapper-translated QueryException) rather than the raw
       // cached_query state.error storage shape — that decouples the test from upstream storage choices.
       final err = infiniteQueryKey.error;
@@ -432,7 +442,9 @@ void main() {
       await query.fetch();
       try {
         await query.getNextPage();
-      } catch (_) {/* expected */}
+      } catch (_) {
+        /* expected */
+      }
 
       expect(infiniteQueryKey.isError, isTrue);
       expect(query.state, isA<InfiniteQueryError<PagedResponse, PageArgs>>());
@@ -452,7 +464,9 @@ void main() {
       await query.fetch();
       try {
         await query.getNextPage();
-      } catch (_) {/* expected */}
+      } catch (_) {
+        /* expected */
+      }
 
       // The defensive error getter must return the QueryException as-is (no cast, no crash).
       expect(() => infiniteQueryKey.error, returnsNormally);
@@ -556,12 +570,14 @@ void main() {
       expect(infiniteQueryKey.isError, isFalse, reason: 'mid-refetch the wrapper must report not-error');
       expect(infiniteQueryKey.error, isNull, reason: 'mid-refetch .error must mirror isError and be null');
 
-      completer.complete(PagedResponse(
-        users: [User(id: 1, name: 'Recovered', email: 'r@b.c')],
-        page: 1,
-        totalPages: 1,
-        hasNext: false,
-      ));
+      completer.complete(
+        PagedResponse(
+          users: [User(id: 1, name: 'Recovered', email: 'r@b.c')],
+          page: 1,
+          totalPages: 1,
+          hasNext: false,
+        ),
+      );
       await futureRefetch;
       expect(infiniteQueryKey.isError, isFalse);
       expect(infiniteQueryKey.error, isNull);
@@ -632,7 +648,9 @@ void main() {
 
       try {
         await query.fetch();
-      } catch (_) {/* expected */}
+      } catch (_) {
+        /* expected */
+      }
 
       expect(captured, isNotNull);
       expect(captured!.statusCode, 500);
@@ -652,7 +670,11 @@ void main() {
 
       final pages = query.state.data?.pages ?? const [];
       expect(pages, isNotEmpty);
-      expect(pages.first, isA<PagedResponse>(), reason: 'state.data must contain the responseHandler-produced PagedResponse, not the raw Map from queryFn');
+      expect(
+        pages.first,
+        isA<PagedResponse>(),
+        reason: 'state.data must contain the responseHandler-produced PagedResponse, not the raw Map from queryFn',
+      );
       expect(pages.first.users.first.name, endsWith('-via-responseHandler'));
     });
   });
@@ -670,21 +692,22 @@ class _MapInfiniteQuery extends InfiniteQuerySerializable<PagedResponse, PageArg
   @override
   PagedResponse responseHandler(dynamic response) {
     final map = response as Map<String, dynamic>;
-    final users = (map['users'] as List)
-        .map((u) {
-          final m = u as Map<String, dynamic>;
-          return User(id: m['id'] as int, name: '${m['name']}-via-responseHandler', email: m['email'] as String);
-        })
-        .toList();
+    final users = (map['users'] as List).map((u) {
+      final m = u as Map<String, dynamic>;
+      return User(id: m['id'] as int, name: '${m['name']}-via-responseHandler', email: m['email'] as String);
+    }).toList();
     return PagedResponse(users: users, page: map['page'] as int, totalPages: map['totalPages'] as int, hasNext: map['hasNext'] as bool);
   }
+
   @override
   Future<dynamic> queryFn(PageArgs arg) async => {
-        'users': [{'id': 1, 'name': 'Raw', 'email': 'raw@example.com'}],
-        'page': arg.page,
-        'totalPages': 1,
-        'hasNext': false,
-      };
+    'users': [
+      {'id': 1, 'name': 'Raw', 'email': 'raw@example.com'},
+    ],
+    'page': arg.page,
+    'totalPages': 1,
+    'hasNext': false,
+  };
   @override
   CachedQuery get cache => localCache;
   @override

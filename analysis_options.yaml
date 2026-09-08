@@ -9,6 +9,7 @@ analyzer:
   # project-wide analysis so IDEs and bare `dart analyze` don't surface them as errors.
   exclude:
     - test/fixtures/**
+    - build/**
   language:
     strict-casts: true
     strict-inference: true

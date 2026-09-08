@@ -30,13 +30,11 @@ import '../data/models/user.dart' as _i2;
 // ignore_for_file: invalid_use_of_internal_member
 
 class _FakeUser_0 extends _i1.SmartFake implements _i2.User {
-  _FakeUser_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
+  _FakeUser_0(Object parent, Invocation parentInvocation) : super(parent, parentInvocation);
 }
 
 class _FakePagedResponse_1 extends _i1.SmartFake implements _i3.PagedResponse {
-  _FakePagedResponse_1(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
+  _FakePagedResponse_1(Object parent, Invocation parentInvocation) : super(parent, parentInvocation);
 }
 
 /// A class which mocks [MockApiService].
@@ -51,27 +49,20 @@ class MockMockApiService extends _i1.Mock implements _i4.MockApiService {
   _i5.Future<_i2.User> getUser(int? id) =>
       (super.noSuchMethod(
             Invocation.method(#getUser, [id]),
-            returnValue: _i5.Future<_i2.User>.value(
-              _FakeUser_0(this, Invocation.method(#getUser, [id])),
-            ),
+            returnValue: _i5.Future<_i2.User>.value(_FakeUser_0(this, Invocation.method(#getUser, [id]))),
           )
           as _i5.Future<_i2.User>);
 
   @override
   _i5.Future<List<_i2.User>> getUsers() =>
-      (super.noSuchMethod(
-            Invocation.method(#getUsers, []),
-            returnValue: _i5.Future<List<_i2.User>>.value(<_i2.User>[]),
-          )
+      (super.noSuchMethod(Invocation.method(#getUsers, []), returnValue: _i5.Future<List<_i2.User>>.value(<_i2.User>[]))
           as _i5.Future<List<_i2.User>>);
 
   @override
   _i5.Future<_i2.User> createUser(_i6.CreateUserRequest? request) =>
       (super.noSuchMethod(
             Invocation.method(#createUser, [request]),
-            returnValue: _i5.Future<_i2.User>.value(
-              _FakeUser_0(this, Invocation.method(#createUser, [request])),
-            ),
+            returnValue: _i5.Future<_i2.User>.value(_FakeUser_0(this, Invocation.method(#createUser, [request]))),
           )
           as _i5.Future<_i2.User>);
 
@@ -79,9 +70,7 @@ class MockMockApiService extends _i1.Mock implements _i4.MockApiService {
   _i5.Future<_i2.User> updateUser(_i7.UpdateUserRequest? request) =>
       (super.noSuchMethod(
             Invocation.method(#updateUser, [request]),
-            returnValue: _i5.Future<_i2.User>.value(
-              _FakeUser_0(this, Invocation.method(#updateUser, [request])),
-            ),
+            returnValue: _i5.Future<_i2.User>.value(_FakeUser_0(this, Invocation.method(#updateUser, [request]))),
           )
           as _i5.Future<_i2.User>);
 
@@ -98,12 +87,7 @@ class MockMockApiService extends _i1.Mock implements _i4.MockApiService {
   _i5.Future<_i3.PagedResponse> getUsersPage(_i8.PageArgs? args) =>
       (super.noSuchMethod(
             Invocation.method(#getUsersPage, [args]),
-            returnValue: _i5.Future<_i3.PagedResponse>.value(
-              _FakePagedResponse_1(
-                this,
-                Invocation.method(#getUsersPage, [args]),
-              ),
-            ),
+            returnValue: _i5.Future<_i3.PagedResponse>.value(_FakePagedResponse_1(this, Invocation.method(#getUsersPage, [args]))),
           )
           as _i5.Future<_i3.PagedResponse>);
 }

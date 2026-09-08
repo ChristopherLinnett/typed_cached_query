@@ -67,10 +67,12 @@ class TypedQueryListener<T> extends StatefulWidget {
   State<TypedQueryListener<T>> createState() => _TypedQueryListenerState<T>();
 }
 
-class _TypedQueryListenerState<T> extends State<TypedQueryListener<T>>
-    with StreamBackedState<QueryStatus<T>, TypedQueryListener<T>> {
+class _TypedQueryListenerState<T> extends State<TypedQueryListener<T>> with StreamBackedState<QueryStatus<T>, TypedQueryListener<T>> {
   @override
   Stream<QueryStatus<T>> streamFor(TypedQueryListener<T> widget) => widget.query.stream;
+
+  @override
+  Object subscriptionIdentityFor(TypedQueryListener<T> widget) => widget.query.key;
 
   @override
   QueryStatus<T> initialStateFor(TypedQueryListener<T> widget) => widget.query.state;

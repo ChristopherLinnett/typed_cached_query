@@ -98,12 +98,7 @@ void main() {
   testWidgets('dispose-time mounted guard suppresses post-dispose setState', (tester) async {
     final query = _makeInfinite(cache, 'iq-dispose', maxPage: 1);
     await tester.pumpWidget(
-      _harness(
-        TypedInfiniteQueryBuilder<String, int>(
-          query: query,
-          builder: (context, state, fetchNext, hasReachedMax) => const Text('x'),
-        ),
-      ),
+      _harness(TypedInfiniteQueryBuilder<String, int>(query: query, builder: (context, state, fetchNext, hasReachedMax) => const Text('x'))),
     );
     await tester.pumpWidget(_harness(const SizedBox.shrink()));
     await tester.pumpAndSettle();
