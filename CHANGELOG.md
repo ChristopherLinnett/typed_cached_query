@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Requires `cached_query_flutter: ^3.4.1` (`cached_query` 3.7.1), up from `^3.3.1`. The new floor carries two upstream cache fixes: a query stays invalidated when its refetch fails, and fetching an inactive query no longer leaks its delete timer.
+- **Behaviour change:** a `QueryConfig` passed to `request.query(config: ...)` or `request.infiniteQuery(config: ...)` now overrides only the fields it sets. Before, passing any config replaced every unset field (`staleDuration`, `cacheDuration`, `shouldRethrow`, `ignoreCacheDuration`, `refetchOnResume`, `refetchOnConnection`, `shouldFetch`) with the library default, discarding the `GlobalQueryConfig`: an app that turned `refetchOnResume` off globally had it switched back on for each query that passed a config. Queries that pass a config and relied on the library defaults (4 second stale window, refetch on resume and on reconnect) must now set those fields themselves.
+
+### Added
+- `RetryConfig` is exported, and a `retryConfig` on a per-query `QueryConfig` now reaches the query; it was dropped before, leaving only a global one in effect.
+- `InfiniteQuerySerializable.getPrevArg` (defaults to no previous page, so existing subclasses are unaffected), with `fetchPreviousPage`, `hasPreviousPage` and `hasNextPage` on `InfiniteQueryKey`. `hasReachedMax` is unchanged.
+- `queryCache` on `MutationKey.definition`, `MutationSerializableExtension.definition` and `.mutate`: the cache `invalidateQueries` and `refetchQueries` act on. Without it they act on `CachedQuery.instance`, as before.
+
 ### Fixed
 - `TypedQueryBuilder`, `TypedInfiniteQueryBuilder`, `TypedQueryListener`, `TypedMutationBuilder` and `TypedMutationListener` no longer cancel and re-subscribe on every parent rebuild. `didUpdateWidget` compared the streams, and `Subject.stream` returns a new wrapper object per call, so the comparison was never equal; re-listening to a `Query` runs its listen-to-fetch path, which refetches whenever the data is stale, so any surface with a rebuilding ancestor refetched every query under it once per stale window. The subscription now moves only when the query or mutation object itself changes.
 

@@ -48,6 +48,51 @@ void main() {
 }
 ```
 
+The global config is the default for every query. A `QueryConfig` passed to `request.query(config: ...)` or
+`request.infiniteQuery(config: ...)` overrides only the fields it sets; every field it leaves unset keeps the
+global value.
+
+#### Retrying failed queries
+
+`RetryConfig` works globally or per query. The retry runs around the request's `queryFn`, so `whenError` receives
+the request's own `ErrorType` (or a `QueryException` for an error the request does not declare):
+
+```dart
+final query = GetUserQuery(123).query(
+  config: QueryConfig(
+    retryConfig: RetryConfig(
+      maxRetries: 3,
+      whenError: (error, attempt) => error is ApiError && error.statusCode >= 500,
+    ),
+  ),
+);
+```
+
+Mutations are retried by the wrapper itself: pass `retryAttempts` and `shouldRetry` (and optionally `backoff`) to
+`request.mutate(...)` or `request.definition(...)`.
+
+#### Lists that grow in both directions
+
+Override `getPrevArg` on an `InfiniteQuerySerializable` to name the page before the first one held. The infinite
+query key then offers `fetchPreviousPage()`, `hasPreviousPage` and `hasNextPage` beside `fetchNextPage()`:
+
+```dart
+@override
+PageArgs? getPrevArg(InfiniteQueryData<FeedPage, PageArgs>? data) {
+  final before = data?.pages.firstOrNull?.previousCursor;
+  return before == null ? null : PageArgs(cursor: before);
+}
+```
+
+#### Invalidating queries held in another cache
+
+A mutation's `invalidateQueries` and `refetchQueries` act on `CachedQuery.instance` unless told otherwise. When
+the queries live in a cache of their own, name it:
+
+```dart
+await updateUser.mutate(queryCache: usersCache, invalidateQueries: [GetUserQuery(123).queryKey]);
+```
+
 ## Usage
 
 ### 1. Define Your Data Models

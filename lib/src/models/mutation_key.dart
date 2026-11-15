@@ -19,6 +19,7 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
     void Function(RequestType, MutationException, ReturnType?)? onError,
     void Function(ReturnType, RequestType)? onSuccess,
     MutationCache? cache,
+    CachedQuery? queryCache,
     FutureOr<ReturnType> Function(RequestType)? onStartMutation,
     List<QueryKey<dynamic, dynamic, dynamic>>? invalidateQueries,
     List<QueryKey<dynamic, dynamic, dynamic>>? refetchQueries,
@@ -83,6 +84,7 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
       },
       onSuccess: onSuccess,
       cache: cache ?? request.cache,
+      queryCache: queryCache,
       onStartMutation: onStartMutation,
       invalidateQueries: invalidateQueries?.map((queryKey) => queryKey.rawKey).toList(),
       refetchQueries: refetchQueries?.map((queryKey) => queryKey.rawKey).toList(),
@@ -102,9 +104,8 @@ class MutationKey<RequestType extends MutationSerializable<RequestType, ReturnTy
 
   MutationException? get error {
     if (_getMutation == null) return null;
-    final state = _getMutation!.state;
-    if (state is! MutationError) return null;
-    final stateError = state.error;
+    final stateError = _getMutation!.state.error;
+    if (stateError == null) return null;
     if (stateError is MutationException) return stateError;
     if (stateError is ErrorType) return request.errorMapper(request, stateError, null).error;
     return MutationException('Unhandled error: $stateError', 500);
