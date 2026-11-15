@@ -1,5 +1,6 @@
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:typed_cached_query/src/errors/query_exception.dart';
+import 'package:typed_cached_query/src/models/query_config_builder.dart';
 import 'package:typed_cached_query/src/models/serializable.dart';
 
 class QueryKey<RequestType extends QuerySerializable<ReturnType, ErrorType>, ReturnType, ErrorType> {
@@ -16,7 +17,6 @@ class QueryKey<RequestType extends QuerySerializable<ReturnType, ErrorType>, Ret
     CachedQuery? cache,
   }) {
     final queryCache = cache ?? request.cache ?? CachedQuery.instance;
-    _validateConfig(config);
     return Query(
       key: _valueKey,
       queryFn: _wrappedQueryFn,
@@ -25,14 +25,6 @@ class QueryKey<RequestType extends QuerySerializable<ReturnType, ErrorType>, Ret
       config: _buildConfig(config, queryCache),
       cache: queryCache,
     );
-  }
-
-  void _validateConfig(QueryConfig<ReturnType>? config) {
-    if (config != null && request.storeQuery && request.storageSerializer == null) {
-      throw ArgumentError(
-        'storageSerializer must be provided when using storeQuery in QueryConfig for QueryKey<$RequestType, $ReturnType, $ErrorType>.',
-      );
-    }
   }
 
   Future<ReturnType> _wrappedQueryFn() async {
@@ -67,23 +59,14 @@ class QueryKey<RequestType extends QuerySerializable<ReturnType, ErrorType>, Ret
     };
   }
 
-  QueryConfig<ReturnType> _buildConfig(QueryConfig<ReturnType>? config, CachedQuery queryCache) {
-    return QueryConfig<ReturnType>(
-      storageSerializer: request.storageSerializer,
-      storageDeserializer: request.storageSerializer == null ? null : (map) => request.storageDeserializer!(map as Map<String, dynamic>),
-      storeQuery: request.storeQuery,
-      shouldFetch: config?.shouldFetch,
-      storageDuration: config?.storageDuration,
-      pollingInterval: config?.pollingInterval,
-      pollInactive: config?.pollInactive ?? false,
-      ignoreCacheDuration: config?.ignoreCacheDuration,
-      staleDuration: config?.staleDuration,
-      cacheDuration: config?.cacheDuration,
-      shouldRethrow: config?.shouldRethrow,
-      refetchOnResume: config?.refetchOnResume,
-      refetchOnConnection: config?.refetchOnConnection,
-    ).mergeWithGlobal(queryCache.defaultConfig);
-  }
+  QueryConfig<ReturnType> _buildConfig(QueryConfig<ReturnType>? config, CachedQuery queryCache) => buildQueryConfig<ReturnType>(
+    config: config,
+    global: queryCache.defaultConfig,
+    storeQuery: request.storeQuery,
+    storageSerializer: request.storageSerializer,
+    storageDeserializer: request.storageDeserializer,
+    owner: 'QueryKey<$RequestType, $ReturnType, $ErrorType>',
+  );
 
   Cacheable<QueryStatus<ReturnType>>? get _getQuery => _cache.getQuery(_valueKey);
 

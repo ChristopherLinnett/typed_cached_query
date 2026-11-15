@@ -333,6 +333,23 @@ abstract class InfiniteQuerySerializable<ReturnType, RequestData, ErrorType> {
   /// a generic [QueryException] before being delivered to the user-supplied `onError` callback.
   RequestData? getNextArg(InfiniteQueryData<ReturnType, RequestData>? data);
 
+  /// Determines the argument for the page before the first one held, for lists that grow in both directions.
+  ///
+  /// **Purpose:** Enables `fetchPreviousPage` on the infinite query key (a chat opened at a message, a feed opened
+  /// at a deep link). Mirrors [getNextArg]: read the first entry of `data.pages` / `data.args` and return the
+  /// argument for the page before it.
+  /// **Returns:** `null` when there is no previous page.
+  /// **Default:** `null` — a list that only grows forwards needs no override.
+  ///
+  /// ```dart
+  /// @override
+  /// PageArgs? getPrevArg(InfiniteQueryData<FeedPage, PageArgs>? data) {
+  ///   final before = data?.pages.firstOrNull?.previousCursor;
+  ///   return before == null ? null : PageArgs(cursor: before);
+  /// }
+  /// ```
+  RequestData? getPrevArg(InfiniteQueryData<ReturnType, RequestData>? data) => null;
+
   /// Function to serialize the full [InfiniteQueryData] (all loaded pages + their args) for persistent storage.
   ///
   /// **Purpose:** Converts the complete pagination state into a storage-compatible map so the
@@ -420,6 +437,7 @@ extension MutationSerializableExtension<T extends MutationSerializable<T, Return
     void Function(T, MutationException, ReturnType?)? onError,
     void Function(ReturnType, T)? onSuccess,
     MutationCache? cache,
+    CachedQuery? queryCache,
     FutureOr<ReturnType> Function(T)? onStartMutation,
     List<QueryKey<dynamic, dynamic, dynamic>>? invalidateQueries,
     List<QueryKey<dynamic, dynamic, dynamic>>? refetchQueries,
@@ -432,6 +450,7 @@ extension MutationSerializableExtension<T extends MutationSerializable<T, Return
     onError: onError,
     onSuccess: onSuccess,
     cache: cache,
+    queryCache: queryCache,
     onStartMutation: onStartMutation,
     invalidateQueries: invalidateQueries,
     refetchQueries: refetchQueries,
@@ -459,6 +478,7 @@ extension MutationSerializableExtension<T extends MutationSerializable<T, Return
     void Function(T, MutationException, ReturnType?)? onError,
     void Function(ReturnType, T)? onSuccess,
     MutationCache? cache,
+    CachedQuery? queryCache,
     FutureOr<ReturnType> Function(T)? onStartMutation,
     List<QueryKey<dynamic, dynamic, dynamic>>? invalidateQueries,
     List<QueryKey<dynamic, dynamic, dynamic>>? refetchQueries,
@@ -472,6 +492,7 @@ extension MutationSerializableExtension<T extends MutationSerializable<T, Return
         onError: onError,
         onSuccess: onSuccess,
         cache: cache,
+        queryCache: queryCache,
         onStartMutation: onStartMutation,
         invalidateQueries: invalidateQueries,
         refetchQueries: refetchQueries,

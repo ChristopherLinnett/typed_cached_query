@@ -1,5 +1,6 @@
 import 'package:cached_query_flutter/cached_query_flutter.dart';
 import 'package:typed_cached_query/src/errors/query_exception.dart';
+import 'package:typed_cached_query/src/models/query_config_builder.dart';
 import 'package:typed_cached_query/src/models/serializable.dart';
 
 class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType, RequestData, ErrorType>, ReturnType, RequestData, ErrorType> {
@@ -19,11 +20,14 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
     InfiniteQueryData<ReturnType, RequestData>? initialData,
   }) {
     final queryCache = cache ?? request.cache ?? CachedQuery.instance;
-    if (config != null && request.storeQuery && request.storageSerializer == null) {
-      throw ArgumentError(
-        'storageSerializer must be provided when using storeQuery in QueryConfig for InfiniteQueryKey<$RequestType, $ReturnType, $RequestData, $ErrorType>.',
-      );
-    }
+    final queryConfig = buildQueryConfig<InfiniteQueryData<ReturnType, RequestData>>(
+      config: config,
+      global: queryCache.defaultConfig,
+      storeQuery: request.storeQuery,
+      storageSerializer: request.storageSerializer,
+      storageDeserializer: request.storageDeserializer,
+      owner: 'InfiniteQueryKey<$RequestType, $ReturnType, $RequestData, $ErrorType>',
+    );
 
     return InfiniteQuery<ReturnType, RequestData>(
       key: _valueKey,
@@ -44,14 +48,8 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
           throw QueryException('parsing the response of type ${raw.runtimeType} to $ReturnType failed: ${e.toString()}', 400);
         }
       },
-      getNextArg: (InfiniteQueryData<ReturnType, RequestData>? data) {
-        try {
-          return request.getNextArg(data);
-        } catch (e) {
-          if (e is ErrorType) rethrow;
-          throw QueryException('An unhandled exception occurred in getNextArg: ${e.toString()}', 500);
-        }
-      },
+      getNextArg: _guardedPageArg(request.getNextArg, 'getNextArg'),
+      getPrevArg: _guardedPageArg(request.getPrevArg, 'getPrevArg'),
       onError: (error) {
         if (error is QueryException) {
           onError?.call(error);
@@ -64,25 +62,24 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
         onError?.call(QueryException('An unhandled exception occurred: ${error.toString()}', 500));
       },
       onSuccess: onSuccess,
-      config: QueryConfig(
-        storageSerializer: request.storageSerializer,
-        storageDeserializer: request.storageSerializer == null ? null : (map) => request.storageDeserializer!(map as Map<String, dynamic>),
-        storeQuery: request.storeQuery,
-        shouldFetch: config?.shouldFetch,
-        storageDuration: config?.storageDuration,
-        pollingInterval: config?.pollingInterval,
-        pollInactive: config?.pollInactive ?? false,
-        ignoreCacheDuration: config?.ignoreCacheDuration,
-        staleDuration: config?.staleDuration,
-        cacheDuration: config?.cacheDuration,
-        shouldRethrow: config?.shouldRethrow,
-        refetchOnResume: config?.refetchOnResume,
-        refetchOnConnection: config?.refetchOnConnection,
-      ).mergeWithGlobal(queryCache.defaultConfig),
-      cache: cache ?? request.cache ?? CachedQuery.instance,
+      config: queryConfig,
+      cache: queryCache,
       prefetchPages: prefetchPages,
       initialData: initialData,
     );
+  }
+
+  /// Wraps a page-argument callback so a failure inside it surfaces the same way a failure inside `queryFn` does:
+  /// the request's own [ErrorType] passes through, anything else becomes a 500 [QueryException] naming [name].
+  GetNextArg<ReturnType, RequestData> _guardedPageArg(GetNextArg<ReturnType, RequestData> pageArg, String name) {
+    return (InfiniteQueryData<ReturnType, RequestData>? data) {
+      try {
+        return pageArg(data);
+      } catch (e) {
+        if (e is ErrorType) rethrow;
+        throw QueryException('An unhandled exception occurred in $name: ${e.toString()}', 500);
+      }
+    };
   }
 
   Cacheable<InfiniteQueryStatus<ReturnType, RequestData>>? get _getInfiniteQuery => _cache.getQuery(_valueKey);
@@ -95,11 +92,27 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
       _getInfiniteQuery!.state is InfiniteQueryLoading &&
       (_getInfiniteQuery!.state as InfiniteQueryLoading).isFetchingNextPage;
   bool get isError => _getInfiniteQuery != null && _getInfiniteQuery!.state.isError;
+
+  /// The cached entry as the infinite query this key built, or `null` when there is none.
+  InfiniteQuery<ReturnType, RequestData>? get _liveInfiniteQuery {
+    final query = _getInfiniteQuery;
+    return query is InfiniteQuery<ReturnType, RequestData> ? query : null;
+  }
+
+  /// Whether [getNextArg][InfiniteQuerySerializable.getNextArg] names a page after the last one held.
+  /// `false` while the query does not exist.
+  bool get hasNextPage => _liveInfiniteQuery?.hasNextPage() ?? false;
+
+  /// Whether [getPrevArg][InfiniteQuerySerializable.getPrevArg] names a page before the first one held.
+  /// `false` while the query does not exist, and always `false` for a request that declares no `getPrevArg`.
+  bool get hasPreviousPage => _liveInfiniteQuery?.hasPreviousPage() ?? false;
+
+  /// Whether the query exists and has no next page. With previous-page fetching this says nothing about the
+  /// other end of the list — read [hasNextPage] and [hasPreviousPage] when both ends matter.
   bool get hasReachedMax {
     if (_getInfiniteQuery == null) return false;
-    if (_getInfiniteQuery is InfiniteQuery<ReturnType, RequestData>) {
-      return !(_getInfiniteQuery as InfiniteQuery<ReturnType, RequestData>).hasNextPage();
-    }
+    final live = _liveInfiniteQuery;
+    if (live != null) return !live.hasNextPage();
     final state = _getInfiniteQuery!.state;
     return state is InfiniteQuerySuccess<ReturnType, RequestData> && !state.hasNextPage;
   }
@@ -157,6 +170,12 @@ class InfiniteQueryKey<RequestType extends InfiniteQuerySerializable<ReturnType,
       if (_getInfiniteQuery == null) return Future.value(null);
       return (_getInfiniteQuery as InfiniteQuery<ReturnType, RequestData>?)?.getNextPage();
     };
+  }
+
+  /// Fetch the page before the first one held, as named by the request's `getPrevArg`, and prepend it.
+  /// Leaves the data as it is when there is no previous page.
+  Future<InfiniteQueryStatus<ReturnType, RequestData>?> Function() get fetchPreviousPage {
+    return () async => _liveInfiniteQuery?.getPreviousPage();
   }
 
   /// Refetch all pages

@@ -23,6 +23,7 @@ export 'package:cached_query_flutter/cached_query_flutter.dart'
         // Configuration types
         GlobalQueryConfig,
         QueryConfig,
+        RetryConfig,
         StorageInterface,
         QueryObserver,
         AppState,
